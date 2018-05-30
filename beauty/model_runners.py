@@ -47,11 +47,17 @@ class Runner:
         self.batch_time_meter.reset()
         self.data_time_meter.reset()
         self.loss_meter.reset()
+        for _, metric_meter in self.metric_meters.items():
+            metric_meter.reset()
 
     def _update_stats(self, batch_time, data_time, loss, metric_values):
         self.batch_time_meter.update(batch_time)
         self.data_time_meter.update(data_time)
         self.loss_meter.update(loss.item(), self.args.batch_size)
+        for metric_label, metric_value in metric_values.items():
+            self.metric_meters[metric_label].update(
+                metric_value.item(), self.args.batch_size
+            )
 
     def print_stats(self, epoch, iteration, total_iterations):
         print(
@@ -91,7 +97,7 @@ class Runner:
     def _forward(self, inputs, targets):
         outputs = self.model(inputs)
         loss = self.loss(outputs, targets)
-        metric_values = self._get_metrics(inputs, targets)
+        metric_values = self._get_metrics(outputs, targets)
         return loss, metric_values
 
     def _step(self, loss, kwargs_):
