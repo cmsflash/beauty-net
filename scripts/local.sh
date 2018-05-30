@@ -8,9 +8,9 @@ batch_size=$((1 * gpus))
 python3 train.py \
   \
   --dataset="SCUT5500" \
-  --data_dir="../scut-fbp5500/Images/" \
-  --train_list="../scut-fbp5500/train_test_files/All_labels.txt" \
-  --val_list="../scut-fbp5500/train_test_files/All_labels.txt" \
+  --data_dir="/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/Images/" \
+  --train_list="/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/train_test_files/All_labels.txt" \
+  --val_list="/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/train_test_files/All_labels.txt" \
   \
   --network="BeautyNet" \
   --feature_extractor="MobileNetV2" \
