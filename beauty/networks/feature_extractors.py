@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import math
 
@@ -53,6 +54,8 @@ class MobileNetV2(nn.Module):
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
 
+        self.global_pool = nn.AdaptiveAvgPool2d(1)
+
         # building classifier
         self.classifier = nn.Sequential(
             nn.Dropout(),
@@ -61,10 +64,11 @@ class MobileNetV2(nn.Module):
 
         self._initialize_weights()
 
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), self.last_channel)
-        return x
+    def forward(self, input):
+        feature_map = self.features(input)
+        global_pool = self.global_pool(feature_map)
+        feature = torch.squeeze(torch.squeeze(global_pool, dim=3), dim=2)
+        return feature
 
     def get_feature_channels(self):
         return self.last_channel
