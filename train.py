@@ -43,8 +43,7 @@ def main(args):
     model = NetworkFactory.create_network(
         args.network, feature_extractor, classifier
     )
-    model = torch.nn.DataParallel(model)
-    ###model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).cuda()
     loss = LossFactory.create_loss(args.loss)
     metrics = MetricFactory.create_metric_bundle(args.metrics)
     trainer = Trainer(model, loss, metrics, args)

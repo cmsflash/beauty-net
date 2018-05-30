@@ -77,8 +77,8 @@ class Runner:
 
     def _parse_data(self, inputs):
         image, label = inputs
-        ###image = Variable(image.cuda(async=True))
-        ###label = Variable(label.cuda(async=True))
+        image = Variable(image.cuda(async=True))
+        label = Variable(label.cuda(async=True))
         return image, label
 
     def _get_metrics(self, inputs, targets):
