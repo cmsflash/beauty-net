@@ -35,7 +35,7 @@ class Scut5500Dataset(Dataset):
         image = self._normalize(image)
         image = transform(image)
         image = torch.from_numpy(image.transpose(2, 0, 1).astype(np.float32))
-        score = round(score)
+        score = round(score) - 1
         score = torch.tensor(score)
 
         return image, score
