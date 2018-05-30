@@ -1,6 +1,5 @@
 import os.path as osp
 import argparse
-import numpy as np
 import sys
 
 import torch
@@ -91,7 +90,7 @@ def get_input_list(input_list_path):
     with open(input_list_path) as input_list_file:
         for line in input_list_file:
             input_list.append(line)
-    return np.asarray(input_list)
+    return input_list
 
 
 def get_data_loaders(
@@ -100,7 +99,7 @@ def get_data_loaders(
     batch_size, num_workers, validation_interval
 ):
     train_list = get_input_list(train_list_path)
-    print('Training size: {}'.format(train_list.shape[0]))
+    print('Training size: {}'.format(len(train_list)))
     train_dataset = DatasetFactory.create_dataset(
         dataset_name,
         data_dir,
@@ -118,7 +117,7 @@ def get_data_loaders(
     )
     if validation_interval > 0:
         val_list = get_input_list(val_list_path)
-        print('Validation size: {}'.format(val_list.shape[0]))
+        print('Validation size: {}'.format(len(val_list)))
         val_dataset = DatasetFactory.create_dataset(
             dataset_name,
             data_dir,
