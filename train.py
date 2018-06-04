@@ -34,7 +34,7 @@ class ModelTrainer:
         args = self.args
         sys.stdout = self._get_logger(args.log_dir)
         device = self._get_device()
-        train_loader = self.get_data_loader(
+        train_loader = self._get_data_loader(
             Scut5500Dataset,
             args.data_dir,
             args.train_list,
@@ -44,7 +44,7 @@ class ModelTrainer:
             pin_memory=True,
             split='train'
         )
-        val_loader = self.get_data_loader(
+        val_loader = self._get_data_loader(
             Scut5500Dataset,
             args.data_dir,
             args.val_list,
@@ -105,7 +105,7 @@ class ModelTrainer:
                 input_list.append(line)
         return input_list
 
-    def get_data_loader(
+    def _get_data_loader(
         self, dataset_type, data_dir, data_list_path,
         input_size, resize_method, batch_size, pin_memory, split
     ):
