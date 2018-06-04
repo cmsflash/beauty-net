@@ -20,12 +20,21 @@ from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 class ModelTrainer:
     CLASS_COUNT = 5
+    DATA_LOADER_CONFIGS = {
+        'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
+        'val': Namespace(
+            split_name='Validatoin', shuffle=False, drop_last=False
+        )
+    }
 
-    @classmethod
-    def main(cls, args):
+    def __init__(self, args):
+        self.args = args
+
+    def train(self):
+        args = self.args
         sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        train_loader = cls.get_data_loader(
+        train_loader = self.get_data_loader(
             Scut5500Dataset,
             args.data_dir,
             args.train_list,
@@ -35,7 +44,7 @@ class ModelTrainer:
             pin_memory=True,
             split='train'
         )
-        val_loader = cls.get_data_loader(
+        val_loader = self.get_data_loader(
             Scut5500Dataset,
             args.data_dir,
             args.val_list,
@@ -47,7 +56,7 @@ class ModelTrainer:
         )
         feature_extractor = MobileNetV2()
         classifier = SoftmaxClassifier(
-            feature_extractor.get_feature_channels(),  cls.CLASS_COUNT
+            feature_extractor.get_feature_channels(),  self.CLASS_COUNT
         )
         model = BeautyNet(feature_extractor, classifier)
         model = nn.DataParallel(model).to(device)
@@ -82,8 +91,7 @@ class ModelTrainer:
                              best_metrics, args.log_dir)
 
 
-    @classmethod
-    def get_input_list(cls, input_list_path):
+    def get_input_list(self, input_list_path):
         input_list = []
         with open(input_list_path) as input_list_file:
             for line in input_list_file:
@@ -91,19 +99,12 @@ class ModelTrainer:
         return input_list
 
 
-    DATA_LOADER_CONFIGS = {
-        'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
-        'val': Namespace(split_name='Validatoin', shuffle=False, drop_last=False)
-    }
-
-
-    @classmethod
     def get_data_loader(
-        cls, dataset_type, data_dir, data_list_path,
+        self, dataset_type, data_dir, data_list_path,
         input_size, resize_method, batch_size, pin_memory, split
     ):
-        data_list = cls.get_input_list(data_list_path)
-        config = cls.DATA_LOADER_CONFIGS[split]
+        data_list = self.get_input_list(data_list_path)
+        config = self.DATA_LOADER_CONFIGS[split]
         print('{} size: {}'.format(config.split_name, len(data_list)))
         dataset = dataset_type(
             data_dir,
@@ -122,8 +123,7 @@ class ModelTrainer:
         return data_loader
 
 
-    @classmethod
-    def resume(cls, model, optimizer, args):
+    def resume(self, model, optimizer, args):
 
         checkpoint = load_checkpoint(args.resume_from)
 
@@ -143,7 +143,7 @@ class ModelTrainer:
         print()
 
 
-    def log_training(cls, model, optimizer, epoch, metric_meters, best_metrics, log_dir):
+    def log_training(self, model, optimizer, epoch, metric_meters, best_metrics, log_dir):
 
         are_best = {}
         print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
@@ -219,4 +219,4 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', type=str, default='logs/default/')
     parser.add_argument('--metrics', nargs='*', type=str, default=['Accuracy'])
     parser.add_argument('--seed', type=int, default=1)
-    ModelTrainer.main(parser.parse_args())
+    ModelTrainer(parser.parse_args()).train()
