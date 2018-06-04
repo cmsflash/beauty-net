@@ -90,14 +90,12 @@ class ModelTrainer:
                 log_training(model, optimizer, epoch, metric_meters,
                              best_metrics, args.log_dir)
 
-
     def get_input_list(self, input_list_path):
         input_list = []
         with open(input_list_path) as input_list_file:
             for line in input_list_file:
                 input_list.append(line)
         return input_list
-
 
     def get_data_loader(
         self, dataset_type, data_dir, data_list_path,
@@ -122,7 +120,6 @@ class ModelTrainer:
         )
         return data_loader
 
-
     def resume(self, model, optimizer, args):
 
         checkpoint = load_checkpoint(args.resume_from)
@@ -141,7 +138,6 @@ class ModelTrainer:
         for metric_label, metric_value in best_metrics.items():
             print('\tBest {}: {:5.3}'.format(metric_label, metric_value), end='')
         print()
-
 
     def log_training(self, model, optimizer, epoch, metric_meters, best_metrics, log_dir):
 
