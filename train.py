@@ -23,6 +23,7 @@ CLASS_COUNT = 5
 
 def main(args):
     sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader = get_data_loader(
         args.dataset,
         args.data_dir,
@@ -48,7 +49,7 @@ def main(args):
         feature_extractor.get_feature_channels(), CLASS_COUNT
     )
     model = BeautyNet(feature_extractor, classifier)
-    model = nn.DataParallel(model).cuda()
+    model = nn.DataParallel(model).to(device)
     loss = nn.CrossEntropyLoss()
     metrics = MetricFactory.create_metric_bundle(args.metrics)
     trainer = Trainer(model, loss, metrics, args)
