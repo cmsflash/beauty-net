@@ -12,7 +12,7 @@ from beauty.networks.beauty_net import BeautyNet
 from beauty.networks.feature_extractors import *
 from beauty.networks.classifiers import *
 from beauty.losses import MetricFactory
-from beauty.datasets import DatasetFactory
+from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils.logging import Logger
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
@@ -25,7 +25,7 @@ def main(args):
     sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     train_loader = get_data_loader(
-        args.dataset,
+        Scut5500Dataset,
         args.data_dir,
         args.train_list,
         (args.input_height, args.input_width),
@@ -35,7 +35,7 @@ def main(args):
         split='train'
     )
     val_loader = get_data_loader(
-        args.dataset,
+        Scut5500Dataset,
         args.data_dir,
         args.val_list,
         (args.input_height, args.input_width),
@@ -96,14 +96,13 @@ DATA_LOADER_CONFIGS = {
 
 
 def get_data_loader(
-    dataset_name, data_dir, data_list_path,
+    dataset_type, data_dir, data_list_path,
     input_size, resize_method, batch_size, pin_memory, split
 ):
     data_list = get_input_list(data_list_path)
     config = DATA_LOADER_CONFIGS[split]
     print('{} size: {}'.format(config.split_name, len(data_list)))
-    dataset = DatasetFactory.create_dataset(
-        dataset_name,
+    dataset = dataset_type(
         data_dir,
         data_list,
         input_size,
