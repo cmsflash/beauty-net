@@ -7,9 +7,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from beauty.networks import (
-    NetworkFactory, ClassifierFactory, FeatureExtractorFactory
-)
+from beauty.networks.beauty_net import BeautyNet
+from beauty.networks.feature_extractors import *
+from beauty.networks.classifiers import *
 from beauty.losses import LossFactory, MetricFactory
 from beauty.optimizers import OptimizerFactory
 from beauty.lr_schedulers import LrSchedulerFactory
@@ -17,6 +17,9 @@ from beauty.datasets import DatasetFactory
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils.logging import Logger
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
+
+
+CLASS_COUNT = 5
 
 
 def main(args):
@@ -41,15 +44,11 @@ def main(args):
         pin_memory=False,
         split='val'
     )
-    feature_extractor = FeatureExtractorFactory.create_feature_extractor(
-        args.feature_extractor
+    feature_extractor = MobileNetV2()
+    classifier = SoftmaxClassifier(
+        feature_extractor.get_feature_channels(), CLASS_COUNT
     )
-    classifier = ClassifierFactory.create_classifier(
-        args.classifier, feature_extractor.get_feature_channels()
-    )
-    model = NetworkFactory.create_network(
-        args.network, feature_extractor, classifier
-    )
+    model = BeautyNet(feature_extractor, classifier)
     model = nn.DataParallel(model).cuda()
     loss = LossFactory.create_loss(args.loss)
     metrics = MetricFactory.create_metric_bundle(args.metrics)
