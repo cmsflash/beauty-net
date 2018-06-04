@@ -72,7 +72,7 @@ def main(args):
     if args.evaluate:
         return
 
-    best_metrics = {metric: 0 for metric in args.metrics}
+    best_metrics = {metric: 0. for metric in args.metrics}
     for epoch in range(args.start_epoch, args.epochs):
         trainer.run(
             train_loader, epoch, optimizer=optimizer, scheduler=scheduler
@@ -162,7 +162,7 @@ def log_training(model, optimizer, epoch, metric_meters, best_metrics, log_dir):
     for metric_label, metric_meter in metric_meters.items():
         metric_value = metric_meter.avg
 
-        if metric_value < best_metrics[metric_label]:
+        if metric_value > best_metrics[metric_label]:
             best_metrics[metric_label] = metric_value
             are_best[metric_label] = True
         else:
