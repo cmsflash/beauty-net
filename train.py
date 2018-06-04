@@ -18,155 +18,159 @@ from beauty.utils.logging import Logger
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
-CLASS_COUNT = 5
+class ModleTrainer:
+    CLASS_COUNT = 5
 
-
-def main(args):
-    sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    train_loader = get_data_loader(
-        Scut5500Dataset,
-        args.data_dir,
-        args.train_list,
-        (args.input_height, args.input_width),
-        args.train_resize_method,
-        args.batch_size,
-        pin_memory=True,
-        split='train'
-    )
-    val_loader = get_data_loader(
-        Scut5500Dataset,
-        args.data_dir,
-        args.val_list,
-        (args.input_height, args.input_width),
-        args.val_resize_method,
-        args.batch_size,
-        pin_memory=False,
-        split='val'
-    )
-    feature_extractor = MobileNetV2()
-    classifier = SoftmaxClassifier(
-        feature_extractor.get_feature_channels(), CLASS_COUNT
-    )
-    model = BeautyNet(feature_extractor, classifier)
-    model = nn.DataParallel(model).to(device)
-    loss = nn.CrossEntropyLoss()
-    metrics = MetricFactory.create_metric_bundle(args.metrics)
-    trainer = Trainer(model, loss, metrics, args)
-    evaluator = Evaluator(model, loss, metrics, args)
-    optimizer = optim.Adam(
-        model.parameters(),
-        lr=1e-5,
-        betas=(0.9, 0.999),
-        weight_decay=1e-4
-    )
-    if args.resume_from:
-        resume(model, optimizer, args)
-        metric_meters = evaluator.run(val_loader, 0)
-        for metric_label, metric_meter in metric_meters.items():
-            print(metric_label + ': {:5.3}'.format(metric_meter.avg))
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
-
-    if args.evaluate:
-        return
-
-    best_metrics = {metric: 0. for metric in args.metrics}
-    for epoch in range(args.start_epoch, args.epochs):
-        trainer.run(
-            train_loader, epoch, optimizer=optimizer, scheduler=scheduler
+    @classmethod
+    def main(cls, args):
+        sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        train_loader = cls.get_data_loader(
+            Scut5500Dataset,
+            args.data_dir,
+            args.train_list,
+            (args.input_height, args.input_width),
+            args.train_resize_method,
+            args.batch_size,
+            pin_memory=True,
+            split='train'
         )
-        if (epoch + 1) % args.validation_interval == 0:
-            metric_meters = evaluator.run(val_loader, epoch)
-            log_training(model, optimizer, epoch, metric_meters,
-                         best_metrics, args.log_dir)
+        val_loader = cls.get_data_loader(
+            Scut5500Dataset,
+            args.data_dir,
+            args.val_list,
+            (args.input_height, args.input_width),
+            args.val_resize_method,
+            args.batch_size,
+            pin_memory=False,
+            split='val'
+        )
+        feature_extractor = MobileNetV2()
+        classifier = SoftmaxClassifier(
+            feature_extractor.get_feature_channels(),  cls.CLASS_COUNT
+        )
+        model = BeautyNet(feature_extractor, classifier)
+        model = nn.DataParallel(model).to(device)
+        loss = nn.CrossEntropyLoss()
+        metrics = MetricFactory.create_metric_bundle(args.metrics)
+        trainer = Trainer(model, loss, metrics, args)
+        evaluator = Evaluator(model, loss, metrics, args)
+        optimizer = optim.Adam(
+            model.parameters(),
+            lr=1e-5,
+            betas=(0.9, 0.999),
+            weight_decay=1e-4
+        )
+        if args.resume_from:
+            resume(model, optimizer, args)
+            metric_meters = evaluator.run(val_loader, 0)
+            for metric_label, metric_meter in metric_meters.items():
+                print(metric_label + ': {:5.3}'.format(metric_meter.avg))
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
+
+        if args.evaluate:
+            return
+
+        best_metrics = {metric: 0. for metric in args.metrics}
+        for epoch in range(args.start_epoch, args.epochs):
+            trainer.run(
+                train_loader, epoch, optimizer=optimizer, scheduler=scheduler
+            )
+            if (epoch + 1) % args.validation_interval == 0:
+                metric_meters = evaluator.run(val_loader, epoch)
+                log_training(model, optimizer, epoch, metric_meters,
+                             best_metrics, args.log_dir)
 
 
-def get_input_list(input_list_path):
-    input_list = []
-    with open(input_list_path) as input_list_file:
-        for line in input_list_file:
-            input_list.append(line)
-    return input_list
+    @classmethod
+    def get_input_list(cls, input_list_path):
+        input_list = []
+        with open(input_list_path) as input_list_file:
+            for line in input_list_file:
+                input_list.append(line)
+        return input_list
 
 
-DATA_LOADER_CONFIGS = {
-    'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
-    'val': Namespace(split_name='Validatoin', shuffle=False, drop_last=False)
-}
-
-
-def get_data_loader(
-    dataset_type, data_dir, data_list_path,
-    input_size, resize_method, batch_size, pin_memory, split
-):
-    data_list = get_input_list(data_list_path)
-    config = DATA_LOADER_CONFIGS[split]
-    print('{} size: {}'.format(config.split_name, len(data_list)))
-    dataset = dataset_type(
-        data_dir,
-        data_list,
-        input_size,
-        transform_method=resize_method
-    )
-    data_loader = DataLoader(
-        dataset,
-        batch_size,
-        shuffle=config.shuffle,
-        num_workers=1,
-        pin_memory=pin_memory,
-        drop_last=config.drop_last
-    )
-    return data_loader
-
-
-def resume(model, optimizer, args):
-
-    checkpoint = load_checkpoint(args.resume_from)
-
-    model.load_state_dict(checkpoint['state_dict'])
-    if not args.refresh_training:
-        args.start_epoch = checkpoint['epoch']
-        optimizer.load_state_dict(checkpoint['optimizer'])
-
-    best_metrics = {}
-    for metric_label in args.metrics:
-        if metric_label in checkpoint:
-            best_metrics[metric_label] = checkpoint[metric_label]
-
-    print('=> Start epoch: {:3d}'.format(args.start_epoch), end='')
-    for metric_label, metric_value in best_metrics.items():
-        print('\tBest {}: {:5.3}'.format(metric_label, metric_value), end='')
-    print()
-
-
-def log_training(model, optimizer, epoch, metric_meters, best_metrics, log_dir):
-
-    are_best = {}
-    print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
-
-    for metric_label, metric_meter in metric_meters.items():
-        metric_value = metric_meter.avg
-
-        if metric_value > best_metrics[metric_label]:
-            best_metrics[metric_label] = metric_value
-            are_best[metric_label] = True
-        else:
-            are_best[metric_label] = False
-
-        print('{}: {:5.3}\tbest: {:5.3}{}\t'.format(metric_label, metric_value,
-                                                    best_metrics[metric_label], ' *' if are_best[metric_label] else ''), end='')
-
-    print()
-    print()
-
-    checkpoint = {**{
-        'epoch': epoch + 1,
-        'state_dict': model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-    },
-        **best_metrics
+    DATA_LOADER_CONFIGS = {
+        'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
+        'val': Namespace(split_name='Validatoin', shuffle=False, drop_last=False)
     }
-    save_checkpoint(checkpoint, are_best, log_dir=log_dir)
+
+
+    @classmethod
+    def get_data_loader(
+        cls, dataset_type, data_dir, data_list_path,
+        input_size, resize_method, batch_size, pin_memory, split
+    ):
+        data_list = cls.get_input_list(data_list_path)
+        config = cls.DATA_LOADER_CONFIGS[split]
+        print('{} size: {}'.format(config.split_name, len(data_list)))
+        dataset = dataset_type(
+            data_dir,
+            data_list,
+            input_size,
+            transform_method=resize_method
+        )
+        data_loader = DataLoader(
+            dataset,
+            batch_size,
+            shuffle=config.shuffle,
+            num_workers=1,
+            pin_memory=pin_memory,
+            drop_last=config.drop_last
+        )
+        return data_loader
+
+
+    @classmethod
+    def resume(cls, model, optimizer, args):
+
+        checkpoint = load_checkpoint(args.resume_from)
+
+        model.load_state_dict(checkpoint['state_dict'])
+        if not args.refresh_training:
+            args.start_epoch = checkpoint['epoch']
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
+        best_metrics = {}
+        for metric_label in args.metrics:
+            if metric_label in checkpoint:
+                best_metrics[metric_label] = checkpoint[metric_label]
+
+        print('=> Start epoch: {:3d}'.format(args.start_epoch), end='')
+        for metric_label, metric_value in best_metrics.items():
+            print('\tBest {}: {:5.3}'.format(metric_label, metric_value), end='')
+        print()
+
+
+    def log_training(cls, model, optimizer, epoch, metric_meters, best_metrics, log_dir):
+
+        are_best = {}
+        print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
+
+        for metric_label, metric_meter in metric_meters.items():
+            metric_value = metric_meter.avg
+
+            if metric_value > best_metrics[metric_label]:
+                best_metrics[metric_label] = metric_value
+                are_best[metric_label] = True
+            else:
+                are_best[metric_label] = False
+
+            print('{}: {:5.3}\tbest: {:5.3}{}\t'.format(metric_label, metric_value,
+                                                        best_metrics[metric_label], ' *' if are_best[metric_label] else ''), end='')
+
+        print()
+        print()
+
+        checkpoint = {**{
+            'epoch': epoch + 1,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+        },
+            **best_metrics
+        }
+        save_checkpoint(checkpoint, are_best, log_dir=log_dir)
 
 
 if __name__ == '__main__':
@@ -215,4 +219,4 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', type=str, default='logs/default/')
     parser.add_argument('--metrics', nargs='*', type=str, default=['Accuracy'])
     parser.add_argument('--seed', type=int, default=1)
-    main(parser.parse_args())
+    ModleTrainer.main(parser.parse_args())
