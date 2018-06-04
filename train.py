@@ -5,14 +5,13 @@ import sys
 
 import torch
 from torch import nn
+from torch import optim
 from torch.utils.data import DataLoader
 
 from beauty.networks.beauty_net import BeautyNet
 from beauty.networks.feature_extractors import *
 from beauty.networks.classifiers import *
-from beauty.losses import LossFactory, MetricFactory
-from beauty.optimizers import OptimizerFactory
-from beauty.lr_schedulers import LrSchedulerFactory
+from beauty.losses import MetricFactory
 from beauty.datasets import DatasetFactory
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils.logging import Logger
@@ -50,32 +49,22 @@ def main(args):
     )
     model = BeautyNet(feature_extractor, classifier)
     model = nn.DataParallel(model).cuda()
-    loss = LossFactory.create_loss(args.loss)
+    loss = nn.CrossEntropyLoss()
     metrics = MetricFactory.create_metric_bundle(args.metrics)
     trainer = Trainer(model, loss, metrics, args)
     evaluator = Evaluator(model, loss, metrics, args)
-    optimizer = OptimizerFactory.create_optimizer(
-        args.optimizer,
+    optimizer = optim.Adam(
         model.parameters(),
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        momentum=args.momentum,
-        nesterov=True,
-        gradient_threshold=args.gradient_threshold,
-        betas=(args.beta1, args.beta2)
+        lr=1e-5,
+        betas=(0.9, 0.999),
+        weight_decay=1e-4
     )
     if args.resume_from:
         resume(model, optimizer, args)
         metric_meters = evaluator.run(val_loader, 0)
         for metric_label, metric_meter in metric_meters.items():
             print(metric_label + ': {:5.3}'.format(metric_meter.avg))
-    scheduler = LrSchedulerFactory.create_lr_scheduler(
-        args.lr_scheduler,
-        optimizer,
-        start_epoch=args.start_epoch,
-        lr_step_size=args.lr_step_size,
-        gamma=args.lr_gamma
-    )
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
 
     if args.evaluate:
         return
@@ -85,7 +74,6 @@ def main(args):
         trainer.run(
             train_loader, epoch, optimizer=optimizer, scheduler=scheduler
         )
-
         if (epoch + 1) % args.validation_interval == 0:
             metric_meters = evaluator.run(val_loader, epoch)
             log_training(model, optimizer, epoch, metric_meters,
@@ -210,7 +198,6 @@ if __name__ == '__main__':
     parser.add_argument('--normalization_method', type=str, default='Example')
     # Traiing parametrs
     parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--epochs', type=int, default=100)
     # Optimizer parameters
     parser.add_argument('--optimizer', type=str, default='SGD')
