@@ -32,7 +32,7 @@ class ModelTrainer:
 
     def train(self):
         args = self.args
-        sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
+        sys.stdout = self._get_logger(args.log_dir)
         device = self._get_device()
         train_loader = self.get_data_loader(
             Scut5500Dataset,
@@ -89,6 +89,10 @@ class ModelTrainer:
                 metric_meters = evaluator.run(val_loader, epoch)
                 log_training(model, optimizer, epoch, metric_meters,
                              best_metrics, args.log_dir)
+
+    def _get_logger(self, log_dir):
+        logger = Logger(osp.join(log_dir, 'log.txt'))
+        return logger
 
     def _get_device(self):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
