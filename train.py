@@ -1,5 +1,6 @@
 import os.path as osp
 import argparse
+from argparse import Namespace
 import sys
 
 import torch
@@ -20,17 +21,25 @@ from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 def main(args):
     sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
-    train_loader, val_loader = get_data_loaders(
+    train_loader = get_data_loader(
         args.dataset,
         args.data_dir,
         args.train_list,
-        args.val_list,
         (args.input_height, args.input_width),
         args.train_resize_method,
+        args.batch_size,
+        pin_memory=True,
+        split='train'
+    )
+    val_loader = get_data_loader(
+        args.dataset,
+        args.data_dir,
+        args.val_list,
+        (args.input_height, args.input_width),
         args.val_resize_method,
         args.batch_size,
-        args.num_workers,
-        args.validation_interval
+        pin_memory=False,
+        split='val'
     )
     feature_extractor = FeatureExtractorFactory.create_feature_extractor(
         args.feature_extractor
@@ -92,46 +101,35 @@ def get_input_list(input_list_path):
     return input_list
 
 
-def get_data_loaders(
-    dataset_name, data_dir, train_list_path, val_list_path,
-    input_size, train_resize_method, val_resize_method,
-    batch_size, num_workers, validation_interval
+DATA_LOADER_CONFIGS = {
+    'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
+    'val': Namespace(split_name='Validatoin', shuffle=False, drop_last=False)
+}
+
+
+def get_data_loader(
+    dataset_name, data_dir, data_list_path,
+    input_size, resize_method, batch_size, pin_memory, split
 ):
-    train_list = get_input_list(train_list_path)
-    print('Training size: {}'.format(len(train_list)))
-    train_dataset = DatasetFactory.create_dataset(
+    data_list = get_input_list(data_list_path)
+    config = DATA_LOADER_CONFIGS[split]
+    print('{} size: {}'.format(config.split_name, len(data_list)))
+    dataset = DatasetFactory.create_dataset(
         dataset_name,
         data_dir,
-        train_list,
+        data_list,
         input_size,
-        transform_method=train_resize_method
+        transform_method=resize_method
     )
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=True,
-        pin_memory=True,
-        drop_last=True
+    data_loader = DataLoader(
+        dataset,
+        batch_size,
+        shuffle=config.shuffle,
+        num_workers=1,
+        pin_memory=pin_memory,
+        drop_last=config.drop_last
     )
-    if validation_interval > 0:
-        val_list = get_input_list(val_list_path)
-        print('Validation size: {}'.format(len(val_list)))
-        val_dataset = DatasetFactory.create_dataset(
-            dataset_name,
-            data_dir,
-            val_list,
-            input_size,
-            transform_method=val_resize_method
-        )
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            shuffle=False,
-            pin_memory=True
-        )
-    return train_loader, val_loader
+    return data_loader
 
 
 def resume(model, optimizer, args):
