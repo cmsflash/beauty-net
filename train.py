@@ -1,85 +1,80 @@
 import os.path as osp
 import argparse
-import numpy as np
+from argparse import Namespace
 import sys
 
 import torch
-import torch.nn
+from torch import nn
+from torch import optim
 from torch.utils.data import DataLoader
-import torchvision.transforms
 
-from beauty.networks import (
-    NetworkFactory, ClassifierFactory, FeatureExtractorFactory
-)
-from beauty.losses import LossFactory, MetricFactory
-from beauty.optimizers import OptimizerFactory
-from beauty.lr_schedulers import LrSchedulerFactory
-from beauty.datasets import DatasetFactory
+from beauty.networks.beauty_net import BeautyNet
+from beauty.networks.feature_extractors import *
+from beauty.networks.classifiers import *
+from beauty.losses import MetricFactory
+from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils.logging import Logger
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
+CLASS_COUNT = 5
+
+
 def main(args):
     sys.stdout = Logger(osp.join(args.log_dir, 'log.txt'))
-    train_loader, val_loader = get_data_loaders(
-        args.dataset,
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    train_loader = get_data_loader(
+        Scut5500Dataset,
         args.data_dir,
         args.train_list,
-        args.val_list,
         (args.input_height, args.input_width),
         args.train_resize_method,
+        args.batch_size,
+        pin_memory=True,
+        split='train'
+    )
+    val_loader = get_data_loader(
+        Scut5500Dataset,
+        args.data_dir,
+        args.val_list,
+        (args.input_height, args.input_width),
         args.val_resize_method,
         args.batch_size,
-        args.num_workers,
-        args.validation_interval
+        pin_memory=False,
+        split='val'
     )
-    feature_extractor = FeatureExtractorFactory.create_feature_extractor(
-        args.feature_extractor
+    feature_extractor = MobileNetV2()
+    classifier = SoftmaxClassifier(
+        feature_extractor.get_feature_channels(), CLASS_COUNT
     )
-    classifier = ClassifierFactory.create_classifier(
-        args.classifier, feature_extractor.get_feature_channels()
-    )
-    model = NetworkFactory.create_network(
-        args.network, feature_extractor, classifier
-    )
-    model = torch.nn.DataParallel(model).cuda()
-    loss = LossFactory.create_loss(args.loss)
+    model = BeautyNet(feature_extractor, classifier)
+    model = nn.DataParallel(model).to(device)
+    loss = nn.CrossEntropyLoss()
     metrics = MetricFactory.create_metric_bundle(args.metrics)
     trainer = Trainer(model, loss, metrics, args)
     evaluator = Evaluator(model, loss, metrics, args)
-    optimizer = OptimizerFactory.create_optimizer(
-        args.optimizer,
+    optimizer = optim.Adam(
         model.parameters(),
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        momentum=args.momentum,
-        nesterov=True,
-        gradient_threshold=args.gradient_threshold,
-        betas=(args.beta1, args.beta2)
+        lr=1e-5,
+        betas=(0.9, 0.999),
+        weight_decay=1e-4
     )
     if args.resume_from:
         resume(model, optimizer, args)
         metric_meters = evaluator.run(val_loader, 0)
         for metric_label, metric_meter in metric_meters.items():
             print(metric_label + ': {:5.3}'.format(metric_meter.avg))
-    scheduler = LrSchedulerFactory.create_lr_scheduler(
-        args.lr_scheduler,
-        optimizer,
-        start_epoch=args.start_epoch,
-        lr_step_size=args.lr_step_size,
-        gamma=args.lr_gamma
-    )
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
 
     if args.evaluate:
         return
 
-    best_metrics = {}
+    best_metrics = {metric: 0. for metric in args.metrics}
     for epoch in range(args.start_epoch, args.epochs):
         trainer.run(
             train_loader, epoch, optimizer=optimizer, scheduler=scheduler
         )
-
         if (epoch + 1) % args.validation_interval == 0:
             metric_meters = evaluator.run(val_loader, epoch)
             log_training(model, optimizer, epoch, metric_meters,
@@ -91,49 +86,37 @@ def get_input_list(input_list_path):
     with open(input_list_path) as input_list_file:
         for line in input_list_file:
             input_list.append(line)
-    return np.asarray(input_list)
+    return input_list
 
 
-def get_data_loaders(
-    dataset_name, data_dir, train_list_path, val_list_path,
-    input_size, train_resize_method, val_resize_method,
-    batch_size, num_workers, validation_interval
+DATA_LOADER_CONFIGS = {
+    'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
+    'val': Namespace(split_name='Validatoin', shuffle=False, drop_last=False)
+}
+
+
+def get_data_loader(
+    dataset_type, data_dir, data_list_path,
+    input_size, resize_method, batch_size, pin_memory, split
 ):
-    train_list = get_input_list(train_list_path)
-    print('Training size: {}'.format(train_list.shape[0]))
-    train_dataset = DatasetFactory.create_dataset(
-        dataset_name,
+    data_list = get_input_list(data_list_path)
+    config = DATA_LOADER_CONFIGS[split]
+    print('{} size: {}'.format(config.split_name, len(data_list)))
+    dataset = dataset_type(
         data_dir,
-        train_list,
+        data_list,
         input_size,
-        transform_method=train_resize_method
+        transform_method=resize_method
     )
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        shuffle=True,
-        pin_memory=True,
-        drop_last=True
+    data_loader = DataLoader(
+        dataset,
+        batch_size,
+        shuffle=config.shuffle,
+        num_workers=1,
+        pin_memory=pin_memory,
+        drop_last=config.drop_last
     )
-    if validation_interval > 0:
-        val_list = get_input_list(val_list_path)
-        print('Validation size: {}'.format(val_list.shape[0]))
-        val_dataset = DatasetFactory.create_dataset(
-            dataset_name,
-            data_dir,
-            val_list,
-            input_size,
-            transform_method=val_resize_method
-        )
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            shuffle=False,
-            pin_memory=True
-        )
-    return train_loader, val_loader
+    return data_loader
 
 
 def resume(model, optimizer, args):
@@ -164,7 +147,7 @@ def log_training(model, optimizer, epoch, metric_meters, best_metrics, log_dir):
     for metric_label, metric_meter in metric_meters.items():
         metric_value = metric_meter.avg
 
-        if metric_value < best_metrics[metric_label]:
+        if metric_value > best_metrics[metric_label]:
             best_metrics[metric_label] = metric_value
             are_best[metric_label] = True
         else:
@@ -215,7 +198,6 @@ if __name__ == '__main__':
     parser.add_argument('--normalization_method', type=str, default='Example')
     # Traiing parametrs
     parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--epochs', type=int, default=100)
     # Optimizer parameters
     parser.add_argument('--optimizer', type=str, default='SGD')
