@@ -3,9 +3,8 @@ import argparse
 import sys
 
 import torch
-import torch.nn
+from torch import nn
 from torch.utils.data import DataLoader
-import torchvision.transforms
 
 from beauty.networks import (
     NetworkFactory, ClassifierFactory, FeatureExtractorFactory
@@ -42,7 +41,7 @@ def main(args):
     model = NetworkFactory.create_network(
         args.network, feature_extractor, classifier
     )
-    model = torch.nn.DataParallel(model).cuda()
+    model = nn.DataParallel(model).cuda()
     loss = LossFactory.create_loss(args.loss)
     metrics = MetricFactory.create_metric_bundle(args.metrics)
     trainer = Trainer(model, loss, metrics, args)
