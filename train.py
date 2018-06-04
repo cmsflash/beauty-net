@@ -72,7 +72,7 @@ def main(args):
     if args.evaluate:
         return
 
-    best_metrics = {}
+    best_metrics = {metric: 0 for metric in args.metrics}
     for epoch in range(args.start_epoch, args.epochs):
         trainer.run(
             train_loader, epoch, optimizer=optimizer, scheduler=scheduler
