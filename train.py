@@ -18,7 +18,7 @@ from beauty.utils.logging import Logger
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
-class ModleTrainer:
+class ModelTrainer:
     CLASS_COUNT = 5
 
     @classmethod
@@ -219,4 +219,4 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', type=str, default='logs/default/')
     parser.add_argument('--metrics', nargs='*', type=str, default=['Accuracy'])
     parser.add_argument('--seed', type=int, default=1)
-    ModleTrainer.main(parser.parse_args())
+    ModelTrainer.main(parser.parse_args())
