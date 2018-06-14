@@ -29,12 +29,3 @@ class Logger(IOBase):
     def close(self):
         self.console.close()
         self.file.close()
-
-    def __del__(self):
-        self.close()
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args):
-        self.close()
