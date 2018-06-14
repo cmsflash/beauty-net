@@ -7,7 +7,7 @@ from .osutils import mkdir_if_missing
 
 
 class Logger(IOBase):
-    def __init__(self, log_path):
+    def __init__(self, log_path=os.devnull):
         super().__init__()
         self.console = sys.stdout
         self.file = self._get_file(log_path)
