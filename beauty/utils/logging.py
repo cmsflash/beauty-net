@@ -3,7 +3,7 @@ import os.path as osp
 import sys
 from io import IOBase
 
-from .osutils import mkdir_if_missing
+from .osutils import mkdir_if_missing, remove_if_exists
 
 
 class Logger(IOBase):
@@ -13,6 +13,7 @@ class Logger(IOBase):
         self.file = self._get_file(log_path)
 
     def _get_file(self, path):
+        remove_if_exists(osp.dirname(path))
         mkdir_if_missing(osp.dirname(path))
         file = open(path, 'w')
         return file
