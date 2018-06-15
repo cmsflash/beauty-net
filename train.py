@@ -33,8 +33,8 @@ class ModelTrainer:
         args = self.args
         commands = args.commands
         sys.stdout = self._get_logger(args.log_dir)
-
         device = self._get_device()
+
         train_loader = self._get_data_loader(
             args.data.train, args.input.train, split='train'
         )
