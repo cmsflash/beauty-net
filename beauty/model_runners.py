@@ -6,12 +6,12 @@ from .utils.meters import AverageMeter
 
 
 class Runner:
-    def __init__(self, model, loss, metrics, args):
+    def __init__(self, model, loss, metrics, input_config):
         super().__init__()
         self.model = model
         self.loss = loss
         self.metrics = metrics
-        self.args = args
+        self.input_config = input_config
 
         self.batch_time_meter = AverageMeter()
         self.data_time_meter = AverageMeter()
@@ -53,10 +53,10 @@ class Runner:
     def _update_stats(self, batch_time, data_time, loss, metric_values):
         self.batch_time_meter.update(batch_time)
         self.data_time_meter.update(data_time)
-        self.loss_meter.update(loss.item(), self.args.batch_size)
+        self.loss_meter.update(loss.item(), self.input_config.batch_size)
         for metric_label, metric_value in metric_values.items():
             self.metric_meters[metric_label].update(
-                metric_value.item(), self.args.batch_size
+                metric_value.item(), self.input_config.batch_size
             )
 
     def print_stats(self, epoch, iteration, total_iterations):

@@ -1,5 +1,4 @@
 import os.path as osp
-import argparse
 from argparse import Namespace
 import sys
 
@@ -32,63 +31,38 @@ class ModelTrainer:
 
     def train(self):
         args = self.args
+        commands = args.commands
         sys.stdout = self._get_logger(args.log_dir)
+
         device = self._get_device()
         train_loader = self._get_data_loader(
-            Scut5500Dataset,
-            args.data_dir,
-            args.train_list,
-            (args.input_height, args.input_width),
-            args.train_resize_method,
-            args.batch_size,
-            pin_memory=True,
-            split='train'
+            args.data.train, args.input.train, split='train'
         )
         val_loader = self._get_data_loader(
-            Scut5500Dataset,
-            args.data_dir,
-            args.val_list,
-            (args.input_height, args.input_width),
-            args.val_resize_method,
-            args.batch_size,
-            pin_memory=False,
-            split='val'
+            args.data.val, args.input.val, split='val', pin_memory=False
         )
-        feature_extractor = MobileNetV2()
-        classifier = SoftmaxClassifier(
-            feature_extractor.get_feature_channels(),  self.CLASS_COUNT
-        )
-        model = BeautyNet(feature_extractor, classifier)
-        model = nn.DataParallel(model).to(device)
-        loss = nn.CrossEntropyLoss()
-        metrics = MetricFactory.create_metric_bundle(args.metrics)
-        trainer = Trainer(model, loss, metrics, args)
-        evaluator = Evaluator(model, loss, metrics, args)
-        optimizer = optim.Adam(
-            model.parameters(),
-            lr=1e-5,
-            betas=(0.9, 0.999),
-            weight_decay=1e-4
-        )
-        if args.resume_from:
-            resume(model, optimizer, args)
-            metric_meters = evaluator.run(val_loader, 0)
-            for metric_label, metric_meter in metric_meters.items():
-                print(metric_label + ': {:5.3}'.format(metric_meter.avg))
+        model = self._get_model(args.model, device)
+        loss = self._get_loss(args.model)
+        metrics = self._get_metrics(args.metrics)
+        optimizer = self._get_optimizer(args.optimizer, model.parameters())
+
+        trainer = Trainer(model, loss, metrics, args.input.train)
+        evaluator = Evaluator(model, loss, metrics, args.input.val)
+        if commands.resume_from:
+            self._resume(model, optimizer, args, commands)
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
 
-        if args.evaluate:
+        if commands.evaluate:
             return
 
         best_metrics = {metric: 0. for metric in args.metrics}
-        for epoch in range(args.start_epoch, args.epochs):
+        for epoch in range(commands.start_epoch, args.training.epochs):
             trainer.run(
                 train_loader, epoch, optimizer=optimizer, scheduler=scheduler
             )
-            if (epoch + 1) % args.validation_interval == 0:
-                metric_meters = evaluator.run(val_loader, epoch)
-                log_training(model, optimizer, epoch, metric_meters,
-                             best_metrics, args.log_dir)
+            metric_meters = evaluator.run(val_loader, epoch)
+            log_training(model, optimizer, epoch, metric_meters,
+                         best_metrics, args.log_dir)
 
     def _get_logger(self, log_dir):
         logger = Logger(osp.join(log_dir, 'log.txt'))
@@ -98,43 +72,68 @@ class ModelTrainer:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         return device
 
-    def get_input_list(self, input_list_path):
+    def _get_input_list(self, input_list_path):
         input_list = []
         with open(input_list_path) as input_list_file:
             for line in input_list_file:
                 input_list.append(line)
         return input_list
 
-    def _get_data_loader(
-        self, dataset_type, data_dir, data_list_path,
-        input_size, resize_method, batch_size, pin_memory, split
-    ):
-        data_list = self.get_input_list(data_list_path)
-        config = self.DATA_LOADER_CONFIGS[split]
-        print('{} size: {}'.format(config.split_name, len(data_list)))
-        dataset = dataset_type(
-            data_dir,
+    def _get_dataset(self, data_config, input_config):
+        data_list = self._get_input_list(data_config.data_list_path)
+        dataset = data_config.dataset(
+            data_config.data_dir,
             data_list,
-            input_size,
-            transform_method=resize_method
+            input_config.input_size,
+            transform_method=input_config.resize_method
         )
+        return dataset
+
+    def _get_data_loader(
+        self, data_config, input_config, split, pin_memory=True
+    ):
+        loader_config = self.DATA_LOADER_CONFIGS[split]
+        dataset = self._get_dataset(data_config, input_config)
+        print('{} size: {}'.format(loader_config.split_name, len(dataset)))
         data_loader = DataLoader(
             dataset,
-            batch_size,
-            shuffle=config.shuffle,
+            input_config.batch_size,
+            shuffle=loader_config.shuffle,
             num_workers=1,
             pin_memory=pin_memory,
-            drop_last=config.drop_last
+            drop_last=loader_config.drop_last
         )
         return data_loader
 
-    def resume(self, model, optimizer, args):
+    def _get_model(self, model_config, device):
+        feature_extractor = model_config.feature_extractor()
+        classifier = model_config.classifier(
+            feature_extractor.get_feature_channels(), self.CLASS_COUNT
+        )
+        model = model_config.network(feature_extractor, classifier)
+        model = nn.DataParallel(model).to(device)
+        return model
 
-        checkpoint = load_checkpoint(args.resume_from)
+    def _get_loss(self, model_config):
+        loss = model_config.loss()
+        return loss
+
+    def _get_metrics(self, metrics):
+        metrics = MetricFactory.create_metric_bundle(metrics)
+        return metrics
+
+    def _get_optimizer(self, optimizer_config, parameters):
+        optimizer = optimizer_config.optimizer(
+            parameters, **vars(optimizer_config.parameters)
+        )
+        return optimizer
+
+    def _resume(self, model, optimizer, args, commands):
+        checkpoint = load_checkpoint(commands.resume_from)
 
         model.load_state_dict(checkpoint['state_dict'])
-        if not args.refresh_training:
-            args.start_epoch = checkpoint['epoch']
+        if not commands.refresh_training:
+            commands.start_epoch = checkpoint['epoch']
             optimizer.load_state_dict(checkpoint['optimizer'])
 
         best_metrics = {}
@@ -142,12 +141,18 @@ class ModelTrainer:
             if metric_label in checkpoint:
                 best_metrics[metric_label] = checkpoint[metric_label]
 
-        print('=> Start epoch: {:3d}'.format(args.start_epoch), end='')
+        print('=> Start epoch: {:3d}'.format(commands.start_epoch), end='')
         for metric_label, metric_value in best_metrics.items():
             print('\tBest {}: {:5.3}'.format(metric_label, metric_value), end='')
         print()
 
-    def log_training(self, model, optimizer, epoch, metric_meters, best_metrics, log_dir):
+        metric_meters = evaluator.run(val_loader, 0)
+        for metric_label, metric_meter in metric_meters.items():
+            print(metric_label + ': {:5.3}'.format(metric_meter.avg))
+
+    def log_training(
+            self, model, optimizer, epoch, metric_meters, best_metrics, log_dir
+        ):
 
         are_best = {}
         print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
@@ -178,49 +183,76 @@ class ModelTrainer:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    gpus = int(sys.argv[1])
+    job_name = sys.argv[2]
 
-    # Operational commanded
-    parser.add_argument('--evaluate', action='store_true')
-    parser.add_argument('--resume_from', type=str, default='')
-    parser.add_argument('--refresh_training', action='store_true')
-    parser.add_argument('--start_epoch', type=int, default=0)
-    # Data parameters
-    parser.add_argument('--dataset')
-    parser.add_argument('--data_dir')
-    parser.add_argument('--train_list')
-    parser.add_argument('--val_list')
-    # Model parameters
-    parser.add_argument('--network')
-    parser.add_argument('--feature_extractor')
-    parser.add_argument('--classifier')
-    parser.add_argument('--weight_decay', type=float, default=0.0001)
-    parser.add_argument('--loss', type=str, default='Cross Entropy')
-    # Input parameters
-    parser.add_argument('--input_height', type=int, default=512)
-    parser.add_argument('--input_width', type=int, default=1024)
-    parser.add_argument(
-        '--train_resize_method', type=str, default='Random Crop'
+    config = Namespace(
+        commands=Namespace(
+            evaluate=False,
+            resume_from=None,
+            refresh_training=False,
+            start_epoch=0
+        ),
+        data=Namespace(
+            train=Namespace(
+                dataset=Scut5500Dataset,
+                data_dir=(
+                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                    'Images/'
+                ),
+                data_list_path=(
+                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                    'train_test_files/All_labels.txt'
+                ),
+            ),
+            val=Namespace(
+                dataset=Scut5500Dataset,
+                data_dir=(
+                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                    'Images/'
+                ),
+                data_list_path=(
+                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                    'train_test_files/All_labels.txt'
+                )
+            )
+        ),
+        input=Namespace(
+            train=Namespace(
+                input_size=(320, 320),
+                resize_method='Data Augment',
+                batch_size=gpus,
+            ),
+            val=Namespace(
+                input_size=(320, 320),
+                resize_method='Resize',
+                batch_size=gpus,
+            ),
+        ),
+        model=Namespace(
+            network=BeautyNet,
+            feature_extractor=MobileNetV2,
+            classifier=SoftmaxClassifier,
+            weight_decay=5e-4,
+            loss=nn.CrossEntropyLoss
+        ),
+        training=Namespace(
+            epochs=200
+        ),
+        optimizer=Namespace(
+            optimizer=optim.Adam,
+            parameters=Namespace(
+                betas=(0.9, 0.99)
+            )
+        ),
+        lr=Namespace(
+            lr=1e-5,
+            lr_scheduler=optim.lr_scheduler.StepLR,
+            lr_step_size=100,
+            lr_gamma=0.1
+        ),
+        log_dir=osp.join('logs', job_name),
+        metrics=['Accuracy']
     )
-    parser.add_argument('--val_resize_method', type=str, default='Pad')
-    parser.add_argument('--normalization_method', type=str, default='Example')
-    # Traiing parametrs
-    parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--epochs', type=int, default=100)
-    # Optimizer parameters
-    parser.add_argument('--optimizer', type=str, default='SGD')
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--beta1', type=float, default=0.9)
-    parser.add_argument('--beta2', type=float, default=0.999)
-    parser.add_argument('--gradient_threshold', type=float, default=None)
-    # Learning rate parameters
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--lr_scheduler', type=str, default='Constant')
-    parser.add_argument('--lr_step_size', type=int, default=100)
-    parser.add_argument('--lr_gamma', type=float, default=0.1)
-    # Auxiliary parameters
-    parser.add_argument('--validation_interval', type=int, default=1)
-    parser.add_argument('--log_dir', type=str, default='logs/default/')
-    parser.add_argument('--metrics', nargs='*', type=str, default=['Accuracy'])
-    parser.add_argument('--seed', type=int, default=1)
-    ModelTrainer(parser.parse_args()).train()
+
+    ModelTrainer(config).train()
