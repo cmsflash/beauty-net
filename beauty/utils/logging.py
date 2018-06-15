@@ -7,14 +7,18 @@ from . import osutils
 
 
 class Logger(IOBase):
-    def __init__(self, log_path=os.devnull):
+    def __init__(self, dir=None):
         super().__init__()
         self.console = sys.stdout
-        self.file = self._get_file(log_path)
+        self.file = self._get_file(dir)
 
-    def _get_file(self, path):
-        osutils.remove_if_exists(osp.dirname(path))
-        osutils.mkdir_if_missing(osp.dirname(path))
+    def _get_file(self, dir):
+        if dir is None:
+            path = os.devnull
+        else:
+            osutils.remove_if_exists(dir)
+            osutils.mkdir_if_missing(dir)
+            path = osp.join(dir, 'log.txt')
         file = open(path, 'w')
         return file
 

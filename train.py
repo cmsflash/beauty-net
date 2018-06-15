@@ -65,7 +65,7 @@ class ModelTrainer:
                          best_metrics, args.log_dir)
 
     def _get_logger(self, log_dir):
-        logger = Logger(osp.join(log_dir, 'log.txt'))
+        logger = Logger(log_dir)
         return logger
 
     def _get_device(self):
