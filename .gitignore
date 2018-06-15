@@ -1,3 +1,6 @@
+beauty_net.egg-info/
+build/
+dist/
 logs/
 *.pyc
 
