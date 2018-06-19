@@ -61,8 +61,10 @@ class ModelTrainer:
                 train_loader, epoch, optimizer=optimizer, scheduler=scheduler
             )
             metric_meters = evaluator.run(val_loader, epoch)
-            log_training(model, optimizer, epoch, metric_meters,
-                         best_metrics, config.log_dir)
+            log_training(
+                model, optimizer, epoch, metric_meters,
+                best_metrics, config.log_dir
+            )
 
     def _get_logger(self, log_dir):
         logger = Logger(log_dir)
