@@ -26,43 +26,43 @@ class ModelTrainer:
         )
     }
 
-    def __init__(self, args):
-        self.args = args
+    def __init__(self, config):
+        self.config = config
 
     def train(self):
-        args = self.args
-        commands = args.commands
-        sys.stdout = self._get_logger(args.log_dir)
+        config = self.config
+        commands = config.commands
+        sys.stdout = self._get_logger(config.log_dir)
         device = self._get_device()
 
         train_loader = self._get_data_loader(
-            args.data.train, args.input.train, split='train'
+            config.data.train, config.input.train, split='train'
         )
         val_loader = self._get_data_loader(
-            args.data.val, args.input.val, split='val', pin_memory=False
+            config.data.val, config.input.val, split='val', pin_memory=False
         )
-        model = self._get_model(args.model, device)
-        loss = self._get_loss(args.model)
-        metrics = self._get_metrics(args.metrics)
-        optimizer = self._get_optimizer(args.optimizer, model.parameters())
+        model = self._get_model(config.model, device)
+        loss = self._get_loss(config.model)
+        metrics = self._get_metrics(config.metrics)
+        optimizer = self._get_optimizer(config.optimizer, model.parameters())
 
-        trainer = Trainer(model, loss, metrics, args.input.train)
-        evaluator = Evaluator(model, loss, metrics, args.input.val)
+        trainer = Trainer(model, loss, metrics, config.input.train)
+        evaluator = Evaluator(model, loss, metrics, config.input.val)
         if commands.resume_from:
-            self._resume(model, optimizer, args, commands)
+            self._resume(model, optimizer, config, commands)
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
 
         if commands.evaluate:
             return
 
-        best_metrics = {metric: 0. for metric in args.metrics}
-        for epoch in range(commands.start_epoch, args.training.epochs):
+        best_metrics = {metric: 0. for metric in config.metrics}
+        for epoch in range(commands.start_epoch, config.training.epochs):
             trainer.run(
                 train_loader, epoch, optimizer=optimizer, scheduler=scheduler
             )
             metric_meters = evaluator.run(val_loader, epoch)
             log_training(model, optimizer, epoch, metric_meters,
-                         best_metrics, args.log_dir)
+                         best_metrics, config.log_dir)
 
     def _get_logger(self, log_dir):
         logger = Logger(log_dir)
@@ -128,7 +128,7 @@ class ModelTrainer:
         )
         return optimizer
 
-    def _resume(self, model, optimizer, args, commands):
+    def _resume(self, model, optimizer, config, commands):
         checkpoint = load_checkpoint(commands.resume_from)
 
         model.load_state_dict(checkpoint['state_dict'])
@@ -137,7 +137,7 @@ class ModelTrainer:
             optimizer.load_state_dict(checkpoint['optimizer'])
 
         best_metrics = {}
-        for metric_label in args.metrics:
+        for metric_label in config.metrics:
             if metric_label in checkpoint:
                 best_metrics[metric_label] = checkpoint[metric_label]
 
