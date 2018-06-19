@@ -22,7 +22,7 @@ class ModelTrainer:
     DATA_LOADER_CONFIGS = {
         'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
         'val': Namespace(
-            split_name='Validatoin', shuffle=False, drop_last=False
+            split_name='Validation', shuffle=False, drop_last=False
         )
     }
 
