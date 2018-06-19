@@ -1,4 +1,4 @@
-import os.path as osp
+from os import path as osp
 from argparse import Namespace
 import sys
 
