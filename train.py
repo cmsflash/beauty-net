@@ -11,9 +11,10 @@ from beauty.networks.beauty_net import BeautyNet
 from beauty.networks.feature_extractors import *
 from beauty.networks.classifiers import *
 from beauty.losses import MetricFactory
+from beauty.lr_schedulers import ConstantLr
 from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
-from beauty.utils.logging import Logger
+from beauty.utils import logging, tensor_utils
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
@@ -32,8 +33,8 @@ class ModelTrainer:
     def train(self):
         config = self.config
         commands = config.commands
-        sys.stdout = self._get_logger(config.log_dir)
-        device = self._get_device()
+        sys.stdout = logging.Logger(config.log_dir)
+        device = tensor_utils.get_device()
 
         train_loader = self._get_data_loader(
             config.data.train, config.input.train, split='train'
@@ -50,7 +51,7 @@ class ModelTrainer:
         evaluator = Evaluator(model, loss, metrics, config.input.val)
         if commands.resume_from:
             self._resume(model, optimizer, config, commands)
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda x: 1)
+        scheduler = ConstantLr(optimizer)
 
         if commands.evaluate:
             return
@@ -66,29 +67,12 @@ class ModelTrainer:
                 best_metrics, config.log_dir
             )
 
-    def _get_logger(self, log_dir):
-        logger = Logger(log_dir)
-        return logger
-
     def _get_device(self):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         return device
 
-    def _get_input_list(self, input_list_path):
-        input_list = []
-        with open(input_list_path) as input_list_file:
-            for line in input_list_file:
-                input_list.append(line)
-        return input_list
-
     def _get_dataset(self, data_config, input_config):
-        data_list = self._get_input_list(data_config.data_list_path)
-        dataset = data_config.dataset(
-            data_config.data_dir,
-            data_list,
-            input_config.input_size,
-            transform_method=input_config.resize_method
-        )
+        dataset = data_config.dataset(data_config.config)
         return dataset
 
     def _get_data_loader(
@@ -198,37 +182,41 @@ if __name__ == '__main__':
         data=Namespace(
             train=Namespace(
                 dataset=Scut5500Dataset,
-                data_dir=(
-                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                    'Images/'
-                ),
-                data_list_path=(
-                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                    'train_test_files/All_labels.txt'
-                ),
+                config=Namespace(
+                    data_dir=(
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        'Images/'
+                    ),
+                    data_list_path=(
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        'train_test_files/All_labels.txt'
+                    ),
+                    input_size=(320, 320),
+                    transform_method='Data Augment'
+                )
             ),
             val=Namespace(
                 dataset=Scut5500Dataset,
-                data_dir=(
-                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                    'Images/'
-                ),
-                data_list_path=(
-                    '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                    'train_test_files/All_labels.txt'
+                config=Namespace(
+                    data_dir=(
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        'Images/'
+                    ),
+                    data_list_path=(
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        'train_test_files/All_labels.txt'
+                    ),
+                    input_size=(320, 320),
+                    transform_method='Resize'
                 )
             )
         ),
         input=Namespace(
             train=Namespace(
-                input_size=(320, 320),
-                resize_method='Data Augment',
-                batch_size=gpus,
+                batch_size=gpus
             ),
             val=Namespace(
-                input_size=(320, 320),
-                resize_method='Resize',
-                batch_size=gpus,
+                batch_size=gpus
             ),
         ),
         model=Namespace(

@@ -10,16 +10,23 @@ from .utils import *
 
 
 class Scut5500Dataset(Dataset):
-    def __init__(self, data_dir, data_list, input_size, transform_method):
+    def __init__(self, data_config):
         super().__init__()
-        self.input_size = input_size
-        self.transform_method = transform_method
-        self.data_list = []
-        for line in data_list:
-            image_name, score = line.split()
-            image_path = osp.join(data_dir, image_name)
-            score = float(score)
-            self.data_list.append((image_path, score))
+        self.input_size = data_config.input_size
+        self.transform_method = data_config.transform_method
+        self.data_list = self._read_data_list(
+            data_config.data_dir, data_config.data_list_path
+        )
+
+    def _read_data_list(self, data_dir, data_list_path):
+        data_list = []
+        with open(data_list_path) as data_list_file:
+            for line in data_list_file:
+                image_name, score = line.split()
+                image_path = osp.join(data_dir, image_name)
+                score = float(score)
+                data_list.append((image_path, score))
+        return data_list
 
     def __len__(self):
         return len(self.data_list)
