@@ -10,8 +10,10 @@ from torch.utils.data import DataLoader
 from beauty.networks.beauty_net import BeautyNet
 from beauty.networks.feature_extractors import *
 from beauty.networks.classifiers import *
+from beauty import networks
 from beauty.losses import MetricFactory
-from beauty.lr_schedulers import ConstantLr
+from beauty import lr_schedulers
+from beauty import data_loaders
 from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils import logging, tensor_utils
@@ -19,14 +21,6 @@ from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
 class ModelTrainer:
-    CLASS_COUNT = 5
-    DATA_LOADER_CONFIGS = {
-        'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
-        'val': Namespace(
-            split_name='Validation', shuffle=False, drop_last=False
-        )
-    }
-
     def __init__(self, config):
         self.config = config
 
@@ -36,22 +30,24 @@ class ModelTrainer:
         sys.stdout = logging.Logger(config.log_dir)
         device = tensor_utils.get_device()
 
-        train_loader = self._get_data_loader(
-            config.data.train, config.input.train, split='train'
+        train_loader = data_loaders.create_data_loader(
+            config.input.train, 'train'
         )
-        val_loader = self._get_data_loader(
-            config.data.val, config.input.val, split='val', pin_memory=False
+        val_loader = data_loaders.create_data_loader(
+            config.input.val, 'val', pin_memory=False
         )
-        model = self._get_model(config.model, device)
-        loss = self._get_loss(config.model)
-        metrics = self._get_metrics(config.metrics)
-        optimizer = self._get_optimizer(config.optimizer, model.parameters())
+        model = networks.create_model(config.model, device)
+        loss = config.model.loss()
+        metrics = MetricFactory.create_metric_bundle(config.metrics)
+        optimizer = config.optimizer.optimizer(
+            model.parameters(), **vars(config.optimizer.config)
+        )
 
         trainer = Trainer(model, loss, metrics, config.input.train)
         evaluator = Evaluator(model, loss, metrics, config.input.val)
         if commands.resume_from:
             self._resume(model, optimizer, config, commands)
-        scheduler = ConstantLr(optimizer)
+        scheduler = lr_schedulers.create_lr_scheduler(config.lr, optimizer)
 
         if commands.evaluate:
             return
@@ -66,53 +62,6 @@ class ModelTrainer:
                 model, optimizer, epoch, metric_meters,
                 best_metrics, config.log_dir
             )
-
-    def _get_device(self):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        return device
-
-    def _get_dataset(self, data_config, input_config):
-        dataset = data_config.dataset(data_config.config)
-        return dataset
-
-    def _get_data_loader(
-        self, data_config, input_config, split, pin_memory=True
-    ):
-        loader_config = self.DATA_LOADER_CONFIGS[split]
-        dataset = self._get_dataset(data_config, input_config)
-        print('{} size: {}'.format(loader_config.split_name, len(dataset)))
-        data_loader = DataLoader(
-            dataset,
-            input_config.batch_size,
-            shuffle=loader_config.shuffle,
-            num_workers=1,
-            pin_memory=pin_memory,
-            drop_last=loader_config.drop_last
-        )
-        return data_loader
-
-    def _get_model(self, model_config, device):
-        feature_extractor = model_config.feature_extractor()
-        classifier = model_config.classifier(
-            feature_extractor.get_feature_channels(), self.CLASS_COUNT
-        )
-        model = model_config.network(feature_extractor, classifier)
-        model = nn.DataParallel(model).to(device)
-        return model
-
-    def _get_loss(self, model_config):
-        loss = model_config.loss()
-        return loss
-
-    def _get_metrics(self, metrics):
-        metrics = MetricFactory.create_metric_bundle(metrics)
-        return metrics
-
-    def _get_optimizer(self, optimizer_config, parameters):
-        optimizer = optimizer_config.optimizer(
-            parameters, **vars(optimizer_config.parameters)
-        )
-        return optimizer
 
     def _resume(self, model, optimizer, config, commands):
         checkpoint = load_checkpoint(commands.resume_from)
@@ -179,7 +128,7 @@ if __name__ == '__main__':
             refresh_training=False,
             start_epoch=0
         ),
-        data=Namespace(
+        input=Namespace(
             train=Namespace(
                 dataset=Scut5500Dataset,
                 config=Namespace(
@@ -193,7 +142,8 @@ if __name__ == '__main__':
                     ),
                     input_size=(320, 320),
                     transform_method='Data Augment'
-                )
+                ),
+                batch_size=gpus
             ),
             val=Namespace(
                 dataset=Scut5500Dataset,
@@ -208,16 +158,9 @@ if __name__ == '__main__':
                     ),
                     input_size=(320, 320),
                     transform_method='Resize'
-                )
+                ),
+                batch_size=gpus
             )
-        ),
-        input=Namespace(
-            train=Namespace(
-                batch_size=gpus
-            ),
-            val=Namespace(
-                batch_size=gpus
-            ),
         ),
         model=Namespace(
             network=BeautyNet,
@@ -231,15 +174,14 @@ if __name__ == '__main__':
         ),
         optimizer=Namespace(
             optimizer=optim.Adam,
-            parameters=Namespace(
+            config=Namespace(
                 betas=(0.9, 0.99)
             )
         ),
         lr=Namespace(
             lr=1e-5,
-            lr_scheduler=optim.lr_scheduler.StepLR,
-            lr_step_size=100,
-            lr_gamma=0.1
+            lr_scheduler=lr_schedulers.ConstantLr,
+            config=Namespace()
         ),
         log_dir=osp.join('logs', job_name),
         metrics=['Accuracy']
