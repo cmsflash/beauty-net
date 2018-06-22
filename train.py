@@ -16,7 +16,7 @@ from beauty import lr_schedulers
 from beauty import data_loaders
 from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
-from beauty.utils import logging, tensor_utils
+from beauty.utils import tensor_utils
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
 
 
@@ -24,7 +24,6 @@ class ModelTrainer:
     def __init__(self, config):
         commands = config.commands
         self.config = config
-        sys.stdout = logging.Logger(config.log_dir)
         self.device = tensor_utils.get_device()
 
         self.train_loader = data_loaders.create_data_loader(
@@ -54,7 +53,6 @@ class ModelTrainer:
 
     def train(self):
         commands = self.config.commands
-        sys.stdout = logging.Logger(self.config.log_dir)
 
         if commands.evaluate:
             return
