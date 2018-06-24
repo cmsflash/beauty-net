@@ -12,12 +12,11 @@ from beauty.networks.beauty_net import BeautyNet
 from beauty.networks import feature_extractors, classifiers
 from beauty.losses import MetricFactory
 from beauty.model_runners import Trainer, Evaluator
-from beauty.utils import tensor_utils
-from beauty.utils.serialization import save_checkpoint, load_checkpoint
+from beauty.utils import tensor_utils, serialization
 
 
 class ModelTrainer:
-    def __init__(self, config):
+    def __init__(self, config, resume_from=None):
         commands = config.commands
         self.config = config
         self.device = tensor_utils.get_device()
@@ -34,6 +33,7 @@ class ModelTrainer:
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
+        self.best_metrics = {metric: 0. for metric in self.config.metrics}
 
         self.trainer = Trainer(
             self.model, self.loss, self.metrics, config.input.train
@@ -41,7 +41,7 @@ class ModelTrainer:
         self.evaluator = Evaluator(
             self.model, self.loss, self.metrics, config.input.val
         )
-        if commands.resume_from:
+        if resume_from:
             self.resume(self.model, self.optimizer, config, commands)
         self.scheduler = lr_schedulers.create_lr_scheduler(
             config.lr, self.optimizer
@@ -50,10 +50,6 @@ class ModelTrainer:
     def train(self):
         commands = self.config.commands
 
-        if commands.evaluate:
-            return
-
-        best_metrics = {metric: 0. for metric in self.config.metrics}
         for epoch in range(commands.start_epoch, self.config.training.epochs):
             self.trainer.run(
                 self.train_loader, epoch,
@@ -62,24 +58,24 @@ class ModelTrainer:
             metric_meters = self.evaluator.run(self.val_loader, epoch)
             log_training(
                 self.model, self.optimizer, epoch, metric_meters,
-                best_metrics, self.config.log_dir
+                self.config.log_dir
             )
 
     def resume(self, commands):
-        checkpoint = load_checkpoint(commands.resume_from)
+        checkpoint = serialization.load_checkpoint(commands.resume_from)
 
         self.model.load_state_dict(checkpoint['state_dict'])
         if not commands.refresh_training:
             commands.start_epoch = checkpoint['epoch']
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
-        best_metrics = {}
+        best_metrics_stored = {}
         for metric_label in self.config.metrics:
             if metric_label in checkpoint:
-                best_metrics[metric_label] = checkpoint[metric_label]
+                best_metrics_stored[metric_label] = checkpoint[metric_label]
 
         print('=> Start epoch: {:3d}'.format(commands.start_epoch), end='')
-        for metric_label, metric_value in best_metrics.items():
+        for metric_label, metric_value in best_metrics_stored.items():
             print('\tBest {}: {:5.3}'.format(metric_label, metric_value), end='')
         print()
 
@@ -87,36 +83,39 @@ class ModelTrainer:
         for metric_label, metric_meter in metric_meters.items():
             print(metric_label + ': {:5.3}'.format(metric_meter.avg))
 
-    def log_training(
-            self, epoch, metric_meters, best_metrics, log_dir
-        ):
-
+    def log_training(self, epoch, metric_meters, log_dir):
         are_best = {}
         print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
 
         for metric_label, metric_meter in metric_meters.items():
             metric_value = metric_meter.avg
 
-            if metric_value > best_metrics[metric_label]:
-                best_metrics[metric_label] = metric_value
+            if metric_value > self.best_metrics[metric_label]:
+                self.best_metrics[metric_label] = metric_value
                 are_best[metric_label] = True
             else:
                 are_best[metric_label] = False
 
-            print('{}: {:5.3}\tbest: {:5.3}{}\t'.format(metric_label, metric_value,
-                                                        best_metrics[metric_label], ' *' if are_best[metric_label] else ''), end='')
+            print(
+                '{}: {:5.3}\tbest: {:5.3}{}\t'.format(
+                    metric_label, metric_value,
+                    self.best_metrics[metric_label],
+                    ' *' if are_best[metric_label] else ''
+                ), end=''
+            )
 
         print()
         print()
 
-        checkpoint = {**{
-            'epoch': epoch + 1,
-            'state_dict': self.model.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-        },
+        checkpoint = {
+            **{
+                'epoch': epoch + 1,
+                'state_dict': self.model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+            },
             **best_metrics
         }
-        save_checkpoint(checkpoint, are_best, log_dir=log_dir)
+        serialization.save_checkpoint(checkpoint, are_best, log_dir=log_dir)
 
 
 if __name__ == '__main__':
@@ -125,7 +124,6 @@ if __name__ == '__main__':
 
     config = Namespace(
         commands=Namespace(
-            evaluate=False,
             resume_from=None,
             refresh_training=False,
             start_epoch=0
