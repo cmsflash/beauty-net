@@ -7,14 +7,10 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 
+from beauty import networks, lr_schedulers, data_loaders, datasets
 from beauty.networks.beauty_net import BeautyNet
-from beauty.networks.feature_extractors import *
-from beauty.networks.classifiers import *
-from beauty import networks
+from beauty.networks import feature_extractors, classifiers
 from beauty.losses import MetricFactory
-from beauty import lr_schedulers
-from beauty import data_loaders
-from beauty.datasets import *
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils import tensor_utils
 from beauty.utils.serialization import save_checkpoint, load_checkpoint
@@ -136,7 +132,7 @@ if __name__ == '__main__':
         ),
         input=Namespace(
             train=Namespace(
-                dataset=Scut5500Dataset,
+                dataset=datasets.Scut5500Dataset,
                 config=Namespace(
                     data_dir=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
@@ -152,7 +148,7 @@ if __name__ == '__main__':
                 batch_size=gpus
             ),
             val=Namespace(
-                dataset=Scut5500Dataset,
+                dataset=datasets.Scut5500Dataset,
                 config=Namespace(
                     data_dir=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
@@ -170,8 +166,8 @@ if __name__ == '__main__':
         ),
         model=Namespace(
             network=BeautyNet,
-            feature_extractor=MobileNetV2,
-            classifier=SoftmaxClassifier,
+            feature_extractor=feature_extractors.MobileNetV2,
+            classifier=classifiers.SoftmaxClassifier,
             weight_decay=5e-4,
             loss=nn.CrossEntropyLoss
         ),
@@ -195,3 +191,4 @@ if __name__ == '__main__':
 
     model_trainer = ModelTrainer(config)
     model_trainer.train()
+
