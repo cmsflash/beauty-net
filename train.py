@@ -12,7 +12,7 @@ from beauty.networks.beauty_net import BeautyNet
 from beauty.networks import feature_extractors, classifiers
 from beauty.losses import MetricFactory
 from beauty.model_runners import Trainer, Evaluator
-from beauty.utils import tensor_utils, serialization
+from beauty.utils import tensor_utils, serialization, meters
 
 
 class ModelTrainer:
@@ -33,7 +33,9 @@ class ModelTrainer:
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
-        self.best_metrics = {metric: 0. for metric in self.config.metrics}
+        self.best_metrics = {
+            metric: meters.MaxMeter(metric) for metric in self.config.metrics
+        }
 
         self.trainer = Trainer(
             self.model, self.loss, self.metrics, config.input.train
@@ -52,10 +54,7 @@ class ModelTrainer:
                 optimizer=self.optimizer, scheduler=self.scheduler
             )
             metric_meters = self.evaluator.run(self.val_loader, epoch)
-            log_training(
-                self.model, self.optimizer, epoch, metric_meters,
-                self.config.log_dir
-            )
+            self.log_training(epoch, metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
         checkpoint = serialization.load_checkpoint(checkpoint_path)
@@ -73,20 +72,9 @@ class ModelTrainer:
 
         for metric_label, metric_meter in metric_meters.items():
             metric_value = metric_meter.avg
-
-            if metric_value > self.best_metrics[metric_label]:
-                self.best_metrics[metric_label] = metric_value
-                are_best[metric_label] = True
-            else:
-                are_best[metric_label] = False
-
-            print(
-                '{}: {:5.3}\tbest: {:5.3}{}\t'.format(
-                    metric_label, metric_value,
-                    self.best_metrics[metric_label],
-                    ' *' if are_best[metric_label] else ''
-                ), end=''
-            )
+            best_metric = self.best_metrics[metric_label]
+            best_metric.update(metric_value)
+            print(best_metric, end='')
 
         print()
         print()
@@ -95,7 +83,7 @@ class ModelTrainer:
             'epoch': epoch + 1,
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'best_metics': best_metrics
+            'best_metrics': self.best_metrics
         }
         serialization.save_checkpoint(checkpoint, are_best, log_dir=log_dir)
 
@@ -115,7 +103,7 @@ if __name__ == '__main__':
                     ),
                     data_list_path=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                        'train_test_files/All_labels.txt'
+                        'train_test_files/1_label.txt'
                     ),
                     input_size=(320, 320),
                     transform_method='Data Augment'
@@ -131,7 +119,7 @@ if __name__ == '__main__':
                     ),
                     data_list_path=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                        'train_test_files/All_labels.txt'
+                        'train_test_files/1_label.txt'
                     ),
                     input_size=(320, 320),
                     transform_method='Resize'
