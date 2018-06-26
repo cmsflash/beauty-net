@@ -35,8 +35,12 @@ class MaxMeter:
             self.latest = False
 
     def __str__(self):
-        string = '{}: {:5.3}\tbest: {:5.3}{}\t'.format(
-            self.label, self.val, self.max, ' *' if self.latest else ''
+        if self.latest:
+            marker = '*'
+        else:
+            marker = ''
+        string = '{}: {:5.3} [{:5.3}]{}'.format(
+            self.label, self.val, self.max, marker
         )
         return string
 
