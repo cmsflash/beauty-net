@@ -7,10 +7,9 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader
 
-from beauty import networks, lr_schedulers, data_loaders, datasets
+from beauty import networks, metrics, lr_schedulers, data_loaders, datasets
 from beauty.networks.beauty_net import BeautyNet
 from beauty.networks import feature_extractors, classifiers
-from beauty.losses import MetricFactory
 from beauty.model_runners import Trainer, Evaluator
 from beauty.utils import tensor_utils, serialization, meters
 
@@ -29,13 +28,13 @@ class ModelTrainer:
         )
         self.model = networks.create_model(config.model, self.device)
         self.loss = config.model.loss()
-        self.metrics = MetricFactory.create_metric_bundle(config.metrics)
+        self.metrics = metrics.create_metric_bundle(config.metrics)
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
-        self.best_metrics = {
-            metric: meters.MaxMeter(metric) for metric in self.config.metrics
-        }
+        self.best_meters = meters.MeterBundle(
+            meters.MaxMeter(metric) for metric in self.config.metrics
+        )
 
         self.trainer = Trainer(
             self.model, self.loss, self.metrics, config.input.train
@@ -64,17 +63,15 @@ class ModelTrainer:
             self.optimizer.load_state_dict(checkpoint['optimizer'])
         print('Training resumed')
         print('Start epoch: {:3d}'.format(self.start_epoch))
-        print('Best metrics: {}'.format(checkpoint['best_metrics']))
+        print('Best metrics: {}'.format(checkpoint['best_meters']))
 
     def log_training(self, epoch, metric_meters, log_dir):
         are_best = {}
         print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
 
+        self.best_meters.update(metric_meters)
         for metric_label, metric_meter in metric_meters.items():
-            metric_value = metric_meter.avg
-            best_metric = self.best_metrics[metric_label]
-            best_metric.update(metric_value)
-            print(best_metric, end='')
+            print(best_meter, end='')
 
         print()
         print()
@@ -83,7 +80,7 @@ class ModelTrainer:
             'epoch': epoch + 1,
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
-            'best_metrics': self.best_metrics
+            'best_meters': self.best_meters
         }
         serialization.save_checkpoint(checkpoint, are_best, log_dir=log_dir)
 
@@ -149,9 +146,8 @@ if __name__ == '__main__':
             config=Namespace()
         ),
         log_dir=osp.join('logs', job_name),
-        metrics=['Accuracy']
+        metrics=[metrics.Accuracy]
     )
 
     model_trainer = ModelTrainer(config)
     model_trainer.train()
-

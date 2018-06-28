@@ -2,7 +2,7 @@ import time
 
 from torch.autograd import Variable
 
-from .utils.meters import AverageMeter
+from .utils import meters
 
 
 class Runner:
@@ -13,12 +13,13 @@ class Runner:
         self.metrics = metrics
         self.input_config = input_config
 
-        self.batch_time_meter = AverageMeter()
-        self.data_time_meter = AverageMeter()
-        self.loss_meter = AverageMeter()
-        self.metric_meters = {
-            metric_label: AverageMeter() for metric_label in metrics.keys()
-        }
+        self.batch_time_meter = meters.AverageMeter()
+        self.data_time_meter = meters.AverageMeter()
+        self.loss_meter = meters.AverageMeter()
+        self.metric_meters = meters.MeterBundle({
+            metric_label: meters.AverageMeter(metric_label)
+            for metric_label in metrics.keys()
+        })
 
     def run(self, data_loader, epoch, **kwargs):
         self._set_model_mode()
@@ -29,12 +30,12 @@ class Runner:
             data_time = time.time() - start_time
 
             inputs, targets = self._parse_data(inputs)
-            loss, metric_values = self._forward(inputs, targets)
+            loss, metric_bundle = self._forward(inputs, targets)
 
             self._step(loss, kwargs)
 
             batch_time = time.time() - start_time
-            self._update_stats(batch_time, data_time, loss, metric_values)
+            self._update_stats(batch_time, data_time, loss, metric_bundle)
             self.print_stats(epoch, i + 1, len(data_loader))
             start_time = time.time()
 
@@ -47,17 +48,13 @@ class Runner:
         self.batch_time_meter.reset()
         self.data_time_meter.reset()
         self.loss_meter.reset()
-        for _, metric_meter in self.metric_meters.items():
-            metric_meter.reset()
+        self.metric_meters.reset()
 
-    def _update_stats(self, batch_time, data_time, loss, metric_values):
+    def _update_stats(self, batch_time, data_time, loss, metric_bundle):
         self.batch_time_meter.update(batch_time)
         self.data_time_meter.update(data_time)
         self.loss_meter.update(loss.item(), self.input_config.batch_size)
-        for metric_label, metric_value in metric_values.items():
-            self.metric_meters[metric_label].update(
-                metric_value.item(), self.input_config.batch_size
-            )
+        self.metric_meters.update(metric_bundle)
 
     def print_stats(self, epoch, iteration, total_iterations):
         print(
@@ -73,9 +70,9 @@ class Runner:
             ),
             end=''
         )
-        for metric_label, metric_values in self.metric_meters.items():
+        for metric_label, metric_bundle in self.metric_meters.items():
             print(metric_label, '{:.3f} ({:.3f})\t'.format(
-                metric_values.val, metric_values.avg), end='')
+                metric_bundle.val, metric_bundle.avg), end='')
         print()
 
     def _get_header(self):
@@ -88,17 +85,17 @@ class Runner:
         return image, label
 
     def _get_metrics(self, inputs, targets):
-        metric_values = {
+        metric_bundle = meters.MetricBundle({
             metric_label: metric(inputs, targets)
             for metric_label, metric in self.metrics.items()
-        }
-        return metric_values
+        })
+        return metric_bundle
 
     def _forward(self, inputs, targets):
         outputs = self.model(inputs)
         loss = self.loss(outputs, targets)
-        metric_values = self._get_metrics(outputs, targets)
-        return loss, metric_values
+        metric_bundle = self._get_metrics(outputs, targets)
+        return loss, metric_bundle
 
     def _step(self, loss, kwargs_):
 
