@@ -9,7 +9,8 @@ class MetricBundle:
 
     def get_metrics(self, input):
         metric_values = meters.MeterBundle({
-            meters.Meter(metric.label, metric(input)) for label, metric in self.metrics.items()
+            meters.Meter(metric.label, metric(input))
+            for label, metric in self.metrics.items()
         })
         return metric_values
 
