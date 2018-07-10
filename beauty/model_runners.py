@@ -6,6 +6,8 @@ from .utils import meters
 
 
 class Runner:
+    tag = None
+
     def __init__(self, model, loss, metrics, input_config):
         super().__init__()
         self.model = model
@@ -16,10 +18,7 @@ class Runner:
         self.batch_time_meter = meters.AverageMeter()
         self.data_time_meter = meters.AverageMeter()
         self.loss_meter = meters.AverageMeter()
-        self.metric_meters = meters.MeterBundle({
-            metric_label: meters.AverageMeter(metric_label)
-            for metric_label in metrics.keys()
-        })
+        self.metric_meters = metrics.create_average_meters()
 
     def run(self, data_loader, epoch, **kwargs):
         self._set_model_mode()
@@ -59,24 +58,14 @@ class Runner:
     def print_stats(self, epoch, iteration, total_iterations):
         print(
             '{} epoch {}: {}/{}\t'
-            'Time {:.3f} ({:.3f})\t'
-            'Data {:.3f} ({:.3f})\t'
-            'Loss {:.3f} ({:.3f})\t'
+            '{}\t{}\t{}\t'
             .format(
-                self._get_header(), epoch, iteration, total_iterations,
-                self.batch_time_meter.val, self.batch_time_meter.avg,
-                self.data_time_meter.val, self.data_time_meter.avg,
-                self.loss_meter.val, self.loss_meter.avg,
+                self.tag, epoch, iteration, total_iterations,
+                self.batch_time_meter, self.data_time_meter, self.loss_meter
             ),
             end=''
         )
-        for metric_label, metric_bundle in self.metric_meters.items():
-            print(metric_label, '{:.3f} ({:.3f})\t'.format(
-                metric_bundle.val, metric_bundle.avg), end='')
-        print()
-
-    def _get_header(self):
-        raise NotImplementedError()
+        print(self.metric_meters)
 
     def _parse_data(self, inputs):
         image, label = inputs
@@ -84,17 +73,10 @@ class Runner:
         label = Variable(label.cuda(async=True))
         return image, label
 
-    def _get_metrics(self, inputs, targets):
-        metric_bundle = meters.MetricBundle({
-            metric_label: metric(inputs, targets)
-            for metric_label, metric in self.metrics.items()
-        })
-        return metric_bundle
-
     def _forward(self, inputs, targets):
         outputs = self.model(inputs)
         loss = self.loss(outputs, targets)
-        metric_bundle = self._get_metrics(outputs, targets)
+        metric_bundle = self.metrics(outputs, targets)
         return loss, metric_bundle
 
     def _step(self, loss, kwargs_):
@@ -103,11 +85,10 @@ class Runner:
 
 
 class Trainer(Runner):
+    tag = 'Training'
+
     def _set_model_mode(self):
         self.model.train()
-
-    def _get_header(self):
-        return 'Training'
 
     def _step(self, loss, kwargs_):
         optimizer = kwargs_['optimizer']
@@ -120,11 +101,10 @@ class Trainer(Runner):
 
 
 class Evaluator(Runner):
+    tag = 'Validation'
+
     def _set_model_mode(self):
         self.model.eval()
-
-    def _get_header(self):
-        return 'Validation'
 
     def _step(self, loss, kwargs_):
         return

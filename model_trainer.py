@@ -23,9 +23,7 @@ class ModelTrainer:
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
-        self.best_meters = meters.MeterBundle(
-            meters.MaxMeter(metric) for metric in self.config.metrics
-        )
+        self.best_meters = self.metrics.create_max_meters()
 
         self.trainer = Trainer(
             self.model, self.loss, self.metrics, config.input.train
@@ -61,9 +59,7 @@ class ModelTrainer:
         print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
 
         self.best_meters.update(metric_meters)
-        for metric_label, metric_meter in metric_meters.items():
-            print(best_meter, end='')
-
+        print(self.best_meters)
         print()
         print()
 

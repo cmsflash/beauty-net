@@ -15,6 +15,7 @@ class Meter:
         else:
             self.count = 1
 
+
 class AverageMeter(Meter):
     def update(self, val, n=1):
         self.val = val
@@ -24,7 +25,6 @@ class AverageMeter(Meter):
     def __str__(self):
         string = '{} {:5.3} ({:5.3})'.format(self.label, self.val, self.measure)
         return string
-
 
 
 class MaxMeter(Meter):
@@ -59,28 +59,12 @@ class MeterBundle:
         for meter in self.meters.values():
             meter.reset()
 
-    def update(self, value_dict):
-        other_bundle = self.from_dict(value_dict)
+    def update(self, other_bundle):
         assert self.meters.keys() == other_bundle.meters.keys()
         for label in self.meters.keys():
-            other_meter = other_bundle.meter[label]
+            other_meter = other_bundle.meters[label]
             self.meters[label].update(other_meter.measure, other_meter.count)
 
-    @classmethod
-    def from_dict(cls, value_dict):
-        bundle = MeterBundle({
-            label: Meter(value) for label, value in value_dict.items()
-        })
-        return bundle
-
-    @classmethod
-    def ensure_bundle(cls, maybe_bundle):
-        if isinstance(maybe_bundle, MeterBundle):
-            bundle = maybe_bundle
-        elif isinstance(maybe_bundle, dict):
-            bundle = cls.from_dict(maybe_bundle)
-        else:
-            raise TypeError('maybe_bundle must be a MeterBundle or a dict.')
-
     def __str__(self):
-        string = '\t'.join(self.meters.values())
+        string = '\t'.join([str(meter) for meter in self.meters.values()])
+        return string
