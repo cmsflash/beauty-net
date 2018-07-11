@@ -1,5 +1,7 @@
 from torch import nn
 
+from . import beauty_net, feature_extractors, classifiers
+
 
 _CLASS_COUNT = 5
 
