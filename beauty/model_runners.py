@@ -7,6 +7,7 @@ from .utils import meters
 
 class Runner:
     tag = None
+    training = True
 
     def __init__(self, model, loss, metrics, input_config):
         super().__init__()
@@ -41,7 +42,7 @@ class Runner:
         return self.metric_meters
 
     def _set_model_mode(self):
-        raise NotImplementedError()
+        self.model.train(self.training)
 
     def _reset_stats(self):
         self.batch_time_meter.reset()
@@ -87,9 +88,6 @@ class Runner:
 class Trainer(Runner):
     tag = 'Training'
 
-    def _set_model_mode(self):
-        self.model.train()
-
     def _step(self, loss, kwargs_):
         optimizer = kwargs_['optimizer']
         scheduler = kwargs_['scheduler']
@@ -102,9 +100,7 @@ class Trainer(Runner):
 
 class Evaluator(Runner):
     tag = 'Validation'
-
-    def _set_model_mode(self):
-        self.model.eval()
+    training = False
 
     def _step(self, loss, kwargs_):
         return
