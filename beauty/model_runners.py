@@ -21,7 +21,7 @@ class Runner:
         self.loss_meter = meters.AverageMeter()
         self.metric_meters = metrics.create_average_meters()
 
-    def run(self, data_loader, epoch, **kwargs):
+    def run(self, data_loader, epoch, optimizer=None, scheduler=None):
         self._set_model_mode()
         self._reset_stats()
 
@@ -32,7 +32,7 @@ class Runner:
             inputs, targets = self._parse_data(inputs)
             loss, metric_bundle = self._forward(inputs, targets)
 
-            self._step(loss, kwargs)
+            self._step(loss, optimizer, scheduler)
 
             batch_time = time.time() - start_time
             self._update_stats(batch_time, data_time, loss, metric_bundle)
@@ -80,18 +80,14 @@ class Runner:
         metric_bundle = self.metrics(outputs, targets)
         return loss, metric_bundle
 
-    def _step(self, loss, kwargs_):
-
-        raise NotImplementedError()
+    def _step(self, loss, optimizer, scheduler):
+        return
 
 
 class Trainer(Runner):
     tag = 'Training'
 
-    def _step(self, loss, kwargs_):
-        optimizer = kwargs_['optimizer']
-        scheduler = kwargs_['scheduler']
-
+    def _step(self, loss, optimizer, scheduler):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -101,6 +97,3 @@ class Trainer(Runner):
 class Evaluator(Runner):
     tag = 'Validation'
     training = False
-
-    def _step(self, loss, kwargs_):
-        return

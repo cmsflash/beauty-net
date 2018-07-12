@@ -21,6 +21,9 @@ class ModelTrainer:
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
+        self.scheduler = lr_schedulers.create_lr_scheduler(
+            config.lr, self.optimizer
+        )
         self.best_meters = self.metrics.create_max_meters()
 
         self.trainer = Trainer(
@@ -29,15 +32,11 @@ class ModelTrainer:
         self.evaluator = Evaluator(
             self.model, self.loss, self.metrics, config.input.val
         )
-        self.scheduler = lr_schedulers.create_lr_scheduler(
-            config.lr, self.optimizer
-        )
 
     def train(self):
         for epoch in range(self.start_epoch, self.config.training.epochs):
             self.trainer.run(
-                self.train_loader, epoch,
-                optimizer=self.optimizer, scheduler=self.scheduler
+                self.train_loader, epoch, self.optimizer, self.scheduler
             )
             metric_meters = self.evaluator.run(self.val_loader, epoch)
             self.log_training(epoch, metric_meters, self.config.log_dir)
