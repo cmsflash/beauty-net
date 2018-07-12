@@ -1,6 +1,6 @@
-from beauty import networks, metrics, lr_schedulers, data_loaders
-from beauty.model_runners import Trainer, Evaluator
-from beauty.utils import tensor_utils, serialization
+from . import networks, metrics, lr_schedulers, data_loaders
+from .model_runners import Trainer, Evaluator
+from .utils import tensor_utils, serialization
 
 
 class ModelTrainer:

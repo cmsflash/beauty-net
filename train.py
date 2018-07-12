@@ -4,9 +4,8 @@ import sys
 
 from torch import nn, optim
 
-from beauty import networks, metrics, lr_schedulers, datasets
+from beauty import ModelTrainer, networks, metrics, lr_schedulers, datasets
 from beauty.networks.beauty_net import BeautyNet
-from model_trainer import ModelTrainer
 
 
 if __name__ == '__main__':
