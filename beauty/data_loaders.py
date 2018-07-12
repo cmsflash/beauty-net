@@ -3,16 +3,11 @@ from argparse import Namespace
 from torch.utils.data import DataLoader
 
 
-_DATA_LOADER_CONFIGS = {
-    'train': Namespace(split_name='Training', shuffle=True, drop_last=True),
-    'val': Namespace(
-        split_name='Validation', shuffle=False, drop_last=False
-    )
-}
+TRAIN_CONFIG = Namespace(split_name='Training', shuffle=True, drop_last=True)
+VAL_CONFIG = Namespace(split_name='Validation', shuffle=False, drop_last=False)
 
 
-def create_data_loader(input_config, split, pin_memory=True):
-    loader_config = _DATA_LOADER_CONFIGS[split]
+def create_data_loader(input_config, loader_config, pin_memory=True):
     dataset = input_config.dataset(input_config.config)
     print('{} size: {}'.format(loader_config.split_name, len(dataset)))
     data_loader = DataLoader(

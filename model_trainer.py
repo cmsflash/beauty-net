@@ -10,10 +10,10 @@ class ModelTrainer:
         self.device = tensor_utils.get_device()
 
         self.train_loader = data_loaders.create_data_loader(
-            config.input.train, 'train'
+            config.input.train, data_loaders.TRAIN_CONFIG
         )
         self.val_loader = data_loaders.create_data_loader(
-            config.input.val, 'val', pin_memory=False
+            config.input.val, data_loaders.VAL_CONFIG, pin_memory=False
         )
         self.model = networks.create_model(config.model, self.device)
         self.loss = config.model.loss()
