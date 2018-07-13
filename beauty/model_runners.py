@@ -27,19 +27,24 @@ class Runner:
 
         start_time = time.time()
         for i, inputs in enumerate(data_loader):
-            data_time = time.time() - start_time
-
-            inputs, targets = self._parse_data(inputs)
-            loss, metric_bundle = self._forward(inputs, targets)
-
-            self._step(loss, optimizer, scheduler)
-
-            batch_time = time.time() - start_time
-            self._update_stats(batch_time, data_time, loss, metric_bundle)
-            self.print_stats(epoch, i + 1, len(data_loader))
-            start_time = time.time()
-
+            self._iterate(
+                i, inputs, epoch, len(data_loader), start_time,
+                optimizer, scheduler
+            )
         return self.metric_meters
+
+    def _iterate(
+            self, i, inputs, epoch, loader_length, start_time,
+            optimizer, scheduler
+        ):
+        data_time = time.time() - start_time
+        inputs, targets = self._parse_data(inputs)
+        loss, metric_bundle = self._forward(inputs, targets)
+        self._step(loss, optimizer, scheduler)
+        batch_time = time.time() - start_time
+        self._update_stats(batch_time, data_time, loss, metric_bundle)
+        self.print_stats(epoch, i + 1, loader_length)
+        start_time = time.time()
 
     def _set_model_mode(self):
         self.model.train(self.training)
