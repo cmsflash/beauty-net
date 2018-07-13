@@ -7,6 +7,7 @@ class ModelTrainer:
     def __init__(self, config, resume_from=None):
         self.config = config
         self.start_epoch = 0
+        self.epoch = self.start_epoch
         self.device = tensor_utils.get_device()
 
         self.train_loader = data_loaders.create_data_loader(
@@ -35,11 +36,12 @@ class ModelTrainer:
 
     def train(self):
         for epoch in range(self.start_epoch, self.config.training.epochs):
+            self.epoch = epoch
             self.trainer.run(
-                self.train_loader, epoch, self.optimizer, self.scheduler
+                self.train_loader, self.epoch, self.optimizer, self.scheduler
             )
-            metric_meters = self.evaluator.run(self.val_loader, epoch)
-            self.log_training(epoch, metric_meters, self.config.log_dir)
+            metric_meters = self.evaluator.run(self.val_loader, self.epoch)
+            self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
         checkpoint = serialization.load_checkpoint(checkpoint_path)
@@ -51,17 +53,20 @@ class ModelTrainer:
         print('Start epoch: {:3d}'.format(self.start_epoch))
         print('Best metrics: {}'.format(checkpoint['best_meters']))
 
-    def log_training(self, epoch, metric_meters, log_dir):
-        are_best = {}
-        print('\n * Finished epoch {:3d}:\t'.format(epoch), end='')
+    def log_training(self, metric_meters, log_dir):
+        print('\n * Finished epoch {:3d}:\t'.format(self.epoch), end='')
 
         self.best_meters.update(metric_meters)
+        are_best = {
+            label: meter.latest
+            for label, meter in self.best_meters.meters.items()
+        }
         print(self.best_meters)
         print()
         print()
 
         checkpoint = {
-            'epoch': epoch + 1,
+            'epoch': self.epoch + 1,
             'state_dict': self.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'best_meters': self.best_meters
