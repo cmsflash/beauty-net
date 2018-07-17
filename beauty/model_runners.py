@@ -25,13 +25,14 @@ class Runner:
     def run(self, data_loader, epoch, optimizer=None, scheduler=None):
         self._set_model_mode()
         self._reset_stats()
-
+        self._epoch_step()
         start_time = time.time()
         for i, inputs in enumerate(data_loader):
             self._iterate(
                 i, inputs, epoch, len(data_loader), start_time,
                 optimizer, scheduler
             )
+            start_time = time.time()
         return self.metric_meters
 
     def _iterate(
@@ -56,6 +57,9 @@ class Runner:
         self.loss_meter.reset()
         self.metric_meters.reset()
 
+    def _epoch_step(self):
+        pass
+
     def _update_stats(self, batch_time, data_time, loss, metric_bundle):
         self.batch_time_meter.update(batch_time)
         self.data_time_meter.update(data_time)
@@ -64,15 +68,19 @@ class Runner:
 
     def print_stats(self, epoch, iteration, total_iterations):
         print(
-            '{} epoch {}: {}/{}\t'
-            '{}\t{}\t{}\t'
-            .format(
-                self.tag, epoch, iteration, total_iterations,
+            '{}\t{}\t{}\t{}\t'.format(
+                self._get_header(epoch, iteration, total_iterations),
                 self.batch_time_meter, self.data_time_meter, self.loss_meter
             ),
             end=''
         )
         print(self.metric_meters)
+
+    def _get_header(self, epoch, iteration, total_iterations):
+        header = '{} epoch {}: {}/{}'.format(
+            self.tag, epoch, iteration, total_iterations
+        )
+        return header
 
     def _parse_data(self, inputs):
         image, label = inputs
@@ -87,7 +95,7 @@ class Runner:
         return loss, metric_bundle
 
     def _step(self, loss, optimizer, scheduler):
-        return
+        pass
 
 
 class Trainer(Runner):
