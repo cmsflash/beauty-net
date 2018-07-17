@@ -4,7 +4,8 @@ from .utils import tensor_utils, serialization
 
 
 class ModelTrainer:
-    def __init__(self, config, resume_from=None):
+    def __init__(self, job_name, config, resume_from=None):
+        self.job_name = job_name
         self.config = config
         self.start_epoch = 0
         self.epoch = self.start_epoch
@@ -28,10 +29,11 @@ class ModelTrainer:
         self.best_meters = self.metrics.create_max_meters()
 
         self.trainer = Trainer(
-            self.model, self.loss, self.metrics, config.input.train
+            self.job_name, self.model, self.loss, self.metrics,
+            config.input.train
         )
         self.evaluator = Evaluator(
-            self.model, self.loss, self.metrics, config.input.val
+            self.job_name, self.model, self.loss, self.metrics, config.input.val
         )
 
     def train(self):

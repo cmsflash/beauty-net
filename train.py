@@ -72,5 +72,5 @@ if __name__ == '__main__':
         metrics=[metrics.Accuracy]
     )
 
-    model_trainer = ModelTrainer(config)
+    model_trainer = ModelTrainer(job_name, config)
     model_trainer.train()

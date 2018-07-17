@@ -9,8 +9,9 @@ class Runner:
     tag = None
     training = True
 
-    def __init__(self, model, loss, metrics, input_config):
+    def __init__(self, job_name, model, loss, metrics, input_config):
         super().__init__()
+        self.job_name = job_name
         self.model = model
         self.loss = loss
         self.metrics = metrics
