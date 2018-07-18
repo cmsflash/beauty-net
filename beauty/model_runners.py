@@ -9,12 +9,17 @@ class Runner:
     tag = None
     training = True
 
-    def __init__(self, job_name, model, loss, metrics, input_config):
+    def __init__(
+            self, job_name, model, loss, metrics,
+            optimizer=None, scheduler=None, input_config=None
+        ):
         super().__init__()
         self.job_name = job_name
         self.model = model
         self.loss = loss
         self.metrics = metrics
+        self.optimizer = optimizer
+        self.scheduler = scheduler
         self.input_config = input_config
 
         self.batch_time_meter = meters.AverageMeter()
@@ -22,27 +27,21 @@ class Runner:
         self.loss_meter = meters.AverageMeter()
         self.metric_meters = metrics.create_average_meters()
 
-    def run(self, data_loader, epoch, optimizer=None, scheduler=None):
+    def run(self, data_loader, epoch):
         self._set_model_mode()
         self._reset_stats()
         self._epoch_step()
         start_time = time.time()
         for i, inputs in enumerate(data_loader):
-            self._iterate(
-                i, inputs, epoch, len(data_loader), start_time,
-                optimizer, scheduler
-            )
+            self._iterate(i, inputs, epoch, len(data_loader), start_time)
             start_time = time.time()
         return self.metric_meters
 
-    def _iterate(
-            self, i, inputs, epoch, loader_length, start_time,
-            optimizer, scheduler
-        ):
+    def _iterate(self, i, inputs, epoch, loader_length, start_time):
         data_time = time.time() - start_time
         inputs, targets = self._parse_data(inputs)
         loss, metric_bundle = self._forward(inputs, targets)
-        self._step(loss, optimizer, scheduler)
+        self._step(loss)
         batch_time = time.time() - start_time
         self._update_stats(batch_time, data_time, loss, metric_bundle)
         self.print_stats(epoch, i + 1, loader_length)
@@ -94,18 +93,18 @@ class Runner:
         metric_bundle = self.metrics(outputs, targets)
         return loss, metric_bundle
 
-    def _step(self, loss, optimizer, scheduler):
+    def _step(self, loss):
         pass
 
 
 class Trainer(Runner):
     tag = 'Training'
 
-    def _step(self, loss, optimizer, scheduler):
-        optimizer.zero_grad()
+    def _step(self, loss):
+        self.optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
-        scheduler.step()
+        self.optimizer.step()
+        self.scheduler.step()
 
 
 class Evaluator(Runner):

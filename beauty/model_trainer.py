@@ -30,18 +30,17 @@ class ModelTrainer:
 
         self.trainer = Trainer(
             self.job_name, self.model, self.loss, self.metrics,
-            config.input.train
+            self.optimizer, self.scheduler, config.input.train
         )
         self.evaluator = Evaluator(
-            self.job_name, self.model, self.loss, self.metrics, config.input.val
+            self.job_name, self.model, self.loss, self.metrics,
+            input_config=config.input.val
         )
 
     def train(self):
         for epoch in range(self.start_epoch, self.config.training.epochs):
             self.epoch = epoch
-            self.trainer.run(
-                self.train_loader, self.epoch, self.optimizer, self.scheduler
-            )
+            self.trainer.run(self.train_loader, self.epoch)
             metric_meters = self.evaluator.run(self.val_loader, self.epoch)
             self.log_training(metric_meters, self.config.log_dir)
 
