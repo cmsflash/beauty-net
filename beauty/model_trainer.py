@@ -29,11 +29,11 @@ class ModelTrainer:
         self.best_meters = self.metrics.create_max_meters()
 
         self.trainer = Trainer(
-            self.job_name, self.model, self.loss, self.metrics,
+            self.job_name, self.model, self.loss, self.metrics, self.device,
             self.optimizer, self.scheduler, config.input.train
         )
         self.evaluator = Evaluator(
-            self.job_name, self.model, self.loss, self.metrics,
+            self.job_name, self.model, self.loss, self.metrics, self.device,
             input_config=config.input.val
         )
 

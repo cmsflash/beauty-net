@@ -1,16 +1,44 @@
 import time
 
-from torch.autograd import Variable
-
 from .utils import meters
 
 
+class ModelMeters:
+    def __init__(self, metrics):
+        self.batch_time_meter = meters.AverageMeter('Time')
+        self.data_time_meter = meters.AverageMeter('Data')
+        self.loss_meter = meters.AverageMeter('Loss')
+        self.metric_meters = metrics.create_average_meters()
+
+    def reset(self):
+        self.batch_time_meter.reset()
+        self.data_time_meter.reset()
+        self.loss_meter.reset()
+        self.metric_meters.reset()
+    
+    def update(
+            self, metric_bundle, batch_time=None, data_time=None, loss=None,
+            batch_size=1
+        ):
+        self.batch_time_meter.update(batch_time)
+        self.data_time_meter.update(data_time)
+        self.loss_meter.update(loss.item(), batch_size)
+        self.metric_meters.update(metric_bundle)
+
+    def __str__(self):
+        string = (
+            f'{self.batch_time_meter}\t{self.data_time_meter}'
+            f'\t{self.loss_meter}\t{self.metric_meters}'
+        )
+        return string
+
+
 class Runner:
-    tag = None
+    tag = {True: 'Training', False: 'Validation'}
     training = True
 
     def __init__(
-            self, job_name, model, loss, metrics,
+            self, job_name, model, loss, metrics, device,
             optimizer=None, scheduler=None, input_config=None
         ):
         super().__init__()
@@ -18,24 +46,22 @@ class Runner:
         self.model = model
         self.loss = loss
         self.metrics = metrics
+        self.device = device
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.input_config = input_config
 
-        self.batch_time_meter = meters.AverageMeter()
-        self.data_time_meter = meters.AverageMeter()
-        self.loss_meter = meters.AverageMeter()
-        self.metric_meters = metrics.create_average_meters()
+        self.meters = ModelMeters(metrics)
 
     def run(self, data_loader, epoch):
         self._set_model_mode()
-        self._reset_stats()
         self._epoch_step()
+        self.meters.reset()
         start_time = time.time()
         for i, inputs in enumerate(data_loader):
             self._iterate(i, inputs, epoch, len(data_loader), start_time)
             start_time = time.time()
-        return self.metric_meters
+        return self.meters.metric_meters
 
     def _iterate(self, i, inputs, epoch, loader_length, start_time):
         data_time = time.time() - start_time
@@ -43,48 +69,35 @@ class Runner:
         loss, metric_bundle = self._forward(inputs, targets)
         self._step(loss)
         batch_time = time.time() - start_time
-        self._update_stats(batch_time, data_time, loss, metric_bundle)
+        self.meters.update(
+            metric_bundle, batch_time, data_time, loss,
+            self.input_config.batch_size
+        )
         self.print_stats(epoch, i + 1, loader_length)
         start_time = time.time()
 
     def _set_model_mode(self):
         self.model.train(self.training)
 
-    def _reset_stats(self):
-        self.batch_time_meter.reset()
-        self.data_time_meter.reset()
-        self.loss_meter.reset()
-        self.metric_meters.reset()
-
     def _epoch_step(self):
         pass
 
-    def _update_stats(self, batch_time, data_time, loss, metric_bundle):
-        self.batch_time_meter.update(batch_time)
-        self.data_time_meter.update(data_time)
-        self.loss_meter.update(loss.item(), self.input_config.batch_size)
-        self.metric_meters.update(metric_bundle)
-
     def print_stats(self, epoch, iteration, total_iterations):
         print(
-            '{}\t{}\t{}\t{}\t'.format(
-                self._get_header(epoch, iteration, total_iterations),
-                self.batch_time_meter, self.data_time_meter, self.loss_meter
-            ),
-            end=''
+            f'{self._get_header(epoch, iteration, total_iterations)}'
+            f'\t{self.meters}'
         )
-        print(self.metric_meters)
 
     def _get_header(self, epoch, iteration, total_iterations):
         header = '{} epoch {}: {}/{}'.format(
-            self.tag, epoch, iteration, total_iterations
+            self.tag[self.training], epoch, iteration, total_iterations
         )
         return header
 
     def _parse_data(self, inputs):
         image, label = inputs
-        image = Variable(image.cuda(async=True))
-        label = Variable(label.cuda(async=True))
+        image = image.to(self.device)
+        label = label.to(self.device)
         return image, label
 
     def _forward(self, inputs, targets):
@@ -94,19 +107,16 @@ class Runner:
         return loss, metric_bundle
 
     def _step(self, loss):
-        pass
+        if self.training:
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            self.scheduler.step()
 
 
 class Trainer(Runner):
-    tag = 'Training'
-
-    def _step(self, loss):
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        self.scheduler.step()
+    pass
 
 
 class Evaluator(Runner):
-    tag = 'Validation'
     training = False

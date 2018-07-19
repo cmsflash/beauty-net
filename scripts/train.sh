@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-partition=AD4
+partition=AD1
 gpus=1
 job_name=test
 

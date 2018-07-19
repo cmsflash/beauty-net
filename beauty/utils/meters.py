@@ -65,6 +65,11 @@ class MeterBundle:
             other_meter = other_bundle.meters[label]
             self.meters[label].update(other_meter.measure, other_meter.count)
 
+    def __add__(self, other_bundle):
+        assert self.meters.keys().isdisjoint(other_bundle.meters.keys())
+        bundle = MeterBundle(self.meter.values() + other_bundle.meters.values())
+        return bundle
+        
     def __str__(self):
         string = '\t'.join([str(meter) for meter in self.meters.values()])
         return string
