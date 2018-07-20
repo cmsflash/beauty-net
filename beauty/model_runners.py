@@ -35,11 +35,10 @@ class ModelMeters:
 
 class Runner:
     tag = {True: 'Training', False: 'Validation'}
-    training = True
 
     def __init__(
             self, job_name, model, loss, metrics, device,
-            optimizer=None, scheduler=None, input_config=None
+            optimizer=None, scheduler=None
         ):
         super().__init__()
         self.job_name = job_name
@@ -49,12 +48,11 @@ class Runner:
         self.device = device
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.input_config = input_config
 
+        self.training = True
         self.meters = ModelMeters(metrics)
 
     def run(self, data_loader, epoch):
-        self._set_model_mode()
         self._epoch_step()
         self.meters.reset()
         start_time = time.time()
@@ -71,12 +69,13 @@ class Runner:
         batch_time = time.time() - start_time
         self.meters.update(
             metric_bundle, batch_time, data_time, loss,
-            self.input_config.batch_size
+            batch_size=inputs.size(0)
         )
         self.print_stats(epoch, i + 1, loader_length)
         start_time = time.time()
 
-    def _set_model_mode(self):
+    def train(self, training):
+        self.training = training
         self.model.train(self.training)
 
     def _epoch_step(self):
@@ -112,11 +111,3 @@ class Runner:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
-
-
-class Trainer(Runner):
-    pass
-
-
-class Evaluator(Runner):
-    training = False

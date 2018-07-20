@@ -1,5 +1,5 @@
 from . import networks, metrics, lr_schedulers, data_loaders
-from .model_runners import Trainer, Evaluator
+from .model_runners import Runner
 from .utils import tensor_utils, serialization
 
 
@@ -28,20 +28,18 @@ class ModelTrainer:
         )
         self.best_meters = self.metrics.create_max_meters()
 
-        self.trainer = Trainer(
+        self.trainer = Runner(
             self.job_name, self.model, self.loss, self.metrics, self.device,
-            self.optimizer, self.scheduler, config.input.train
-        )
-        self.evaluator = Evaluator(
-            self.job_name, self.model, self.loss, self.metrics, self.device,
-            input_config=config.input.val
+            self.optimizer, self.scheduler
         )
 
     def train(self):
         for epoch in range(self.start_epoch, self.config.training.epochs):
             self.epoch = epoch
+            self.trainer.train(True)
             self.trainer.run(self.train_loader, self.epoch)
-            metric_meters = self.evaluator.run(self.val_loader, self.epoch)
+            self.trainer.train(False)
+            metric_meters = self.trainer.run(self.val_loader, self.epoch)
             self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
