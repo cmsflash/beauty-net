@@ -38,7 +38,7 @@ class Runner:
 
     def __init__(
             self, job_name, model, loss, metrics, device,
-            optimizer=None, scheduler=None, train_loader=None, val_loader=None
+            optimizer, scheduler, train_loader, val_loader
         ):
         super().__init__()
         self.job_name = job_name
