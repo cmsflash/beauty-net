@@ -34,11 +34,11 @@ class ModelMeters:
 
 
 class Runner:
-    tag = {True: 'Training', False: 'Validation'}
+    tags = {True: 'Training', False: 'Validation'}
 
     def __init__(
             self, job_name, model, loss, metrics, device,
-            optimizer=None, scheduler=None
+            optimizer=None, scheduler=None, train_loader=None, val_loader=None
         ):
         super().__init__()
         self.job_name = job_name
@@ -48,16 +48,18 @@ class Runner:
         self.device = device
         self.optimizer = optimizer
         self.scheduler = scheduler
+        self.loaders = {True: train_loader, False: val_loader}
 
         self.training = True
         self.meters = ModelMeters(metrics)
 
-    def run(self, data_loader, epoch):
+    def run_epoch(self, epoch):
         self._epoch_step()
         self.meters.reset()
         start_time = time.time()
-        for i, inputs in enumerate(data_loader):
-            self._iterate(i, inputs, epoch, len(data_loader), start_time)
+        loader = self.loaders[self.training]
+        for i, inputs in enumerate(loader):
+            self._iterate(i, inputs, epoch, len(loader), start_time)
             start_time = time.time()
         return self.meters.metric_meters
 
@@ -89,7 +91,7 @@ class Runner:
 
     def _get_header(self, epoch, iteration, total_iterations):
         header = '{} epoch {}: {}/{}'.format(
-            self.tag[self.training], epoch, iteration, total_iterations
+            self.tags[self.training], epoch, iteration, total_iterations
         )
         return header
 

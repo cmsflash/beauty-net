@@ -30,16 +30,16 @@ class ModelTrainer:
 
         self.trainer = Runner(
             self.job_name, self.model, self.loss, self.metrics, self.device,
-            self.optimizer, self.scheduler
+            self.optimizer, self.scheduler, self.train_loader, self.val_loader
         )
 
     def train(self):
         for epoch in range(self.start_epoch, self.config.training.epochs):
             self.epoch = epoch
             self.trainer.train(True)
-            self.trainer.run(self.train_loader, self.epoch)
+            self.trainer.run_epoch(self.epoch)
             self.trainer.train(False)
-            metric_meters = self.trainer.run(self.val_loader, self.epoch)
+            metric_meters = self.trainer.run_epoch(self.epoch)
             self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
