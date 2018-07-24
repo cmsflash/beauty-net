@@ -86,14 +86,12 @@ class Runner:
         pass
 
     def print_stats(self, iteration, total_iterations):
-        print(
-            f'{self._get_header(iteration, total_iterations)}'
-            f'\t{self.meters}'
-        )
+        print(f'{self._get_header(iteration, total_iterations)}\t{self.meters}')
 
     def _get_header(self, iteration, total_iterations):
-        header = '{} epoch {}: {}/{}'.format(
-            self.tags[self.training], self.epoch, iteration, total_iterations
+        header = (
+            f'{self.tags[self.training]} epoch {self.epoch}:'
+            f' {iteration}/{total_iterations}'
         )
         return header
 
