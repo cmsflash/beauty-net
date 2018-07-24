@@ -43,6 +43,7 @@ class Runner:
         super().__init__()
         self.job_name = job_name
         self.epoch = -1
+        self.iteration = -1
         self.model = model
         self.loss = loss
         self.metrics = metrics
@@ -61,11 +62,12 @@ class Runner:
         start_time = time.time()
         loader = self.loaders[self.training]
         for i, inputs in enumerate(loader):
-            self._iterate(i, inputs, len(loader), start_time)
+            self._iterate(i, inputs, start_time)
             start_time = time.time()
         return self.meters.metric_meters
 
-    def _iterate(self, i, inputs, loader_length, start_time):
+    def _iterate(self, i, inputs, start_time):
+        self.iteration += 1
         data_time = time.time() - start_time
         inputs, targets = self._parse_data(inputs)
         loss, metric_bundle = self._forward(inputs, targets)
@@ -75,7 +77,7 @@ class Runner:
             metric_bundle, batch_time, data_time, loss,
             batch_size=inputs.size(0)
         )
-        self.print_stats(i + 1, loader_length)
+        self.print_stats()
         start_time = time.time()
 
     def train(self, training):
@@ -85,13 +87,13 @@ class Runner:
     def _epoch_step(self):
         pass
 
-    def print_stats(self, iteration, total_iterations):
-        print(f'{self._get_header(iteration, total_iterations)}\t{self.meters}')
+    def print_stats(self):
+        print(f'{self._get_header()}\t{self.meters}')
 
-    def _get_header(self, iteration, total_iterations):
+    def _get_header(self):
         header = (
             f'{self.tags[self.training]} epoch {self.epoch}:'
-            f' {iteration}/{total_iterations}'
+            f' {self.iteration}/{len(self.loaders[self.training])}'
         )
         return header
 
