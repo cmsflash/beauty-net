@@ -1,25 +1,32 @@
+import time
+
 from . import networks, metrics, lr_schedulers, data_loaders
-from .model_runners import Runner
-from .utils import tensor_utils, serialization
+from .utils import tensor_utils, serialization, meters
 
 
 class ModelTrainer:
+    tags = {True: 'Training', False: 'Validation'}
+
     def __init__(self, job_name, config, resume_from=None):
         self.job_name = job_name
         self.config = config
-        self.start_epoch = 0
-        self.epoch = self.start_epoch
+        self.epoch = -1
+        self.iteration = -1
+        self.training = True
         self.device = tensor_utils.get_device()
 
-        self.train_loader = data_loaders.create_data_loader(
-            config.input.train, data_loaders.TRAIN_CONFIG
-        )
-        self.val_loader = data_loaders.create_data_loader(
-            config.input.val, data_loaders.VAL_CONFIG, pin_memory=False
-        )
+        self.loaders = {
+            True: data_loaders.create_data_loader(
+                config.input.train, data_loaders.TRAIN_CONFIG
+            ),
+            False: data_loaders.create_data_loader(
+                config.input.val, data_loaders.VAL_CONFIG, pin_memory=False
+            )
+        }
         self.model = networks.create_model(config.model, self.device)
         self.loss = config.model.loss()
         self.metrics = metrics.create_metric_bundle(config.metrics)
+        self.meters = meters.ModelMeters(self.metrics)
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
@@ -28,28 +35,22 @@ class ModelTrainer:
         )
         self.best_meters = self.metrics.create_max_meters()
 
-        self.trainer = Runner(
-            self.job_name, self.model, self.loss, self.metrics, self.device,
-            self.optimizer, self.scheduler, self.train_loader, self.val_loader
-        )
-
     def train(self):
-        for epoch in range(self.start_epoch, self.config.training.epochs):
+        start_epoch = self.epoch
+        for epoch in range(start_epoch, self.config.training.epochs):
             self.epoch = epoch
-            self.trainer.train(True)
-            self.trainer.run_epoch(self.epoch)
-            self.trainer.train(False)
-            metric_meters = self.trainer.run_epoch(self.epoch)
+            self.run_epoch(training=True)
+            metric_meters = self.run_epoch(training=False)
             self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
         checkpoint = serialization.load_checkpoint(checkpoint_path)
         self.model.load_state_dict(checkpoint['state_dict'])
         if not refresh:
-            self.start_epoch = checkpoint['epoch']
+            self.epoch = checkpoint['epoch']
             self.optimizer.load_state_dict(checkpoint['optimizer'])
         print('Training resumed')
-        print('Start epoch: {:3d}'.format(self.start_epoch))
+        print('Start epoch: {:3d}'.format(self.epoch))
         print('Best metrics: {}'.format(checkpoint['best_meters']))
 
     def log_training(self, metric_meters, log_dir):
@@ -71,3 +72,66 @@ class ModelTrainer:
             'best_meters': self.best_meters
         }
         serialization.save_checkpoint(checkpoint, are_best, log_dir=log_dir)
+
+    def run_epoch(self, training=None):
+        if training is not None:
+            self.set_training(training)
+        self._epoch_step()
+        self.meters.reset()
+        start_time = time.time()
+        loader = self.loaders[self.training]
+        for i, inputs in enumerate(loader):
+            self._iterate(i, inputs, start_time)
+            start_time = time.time()
+        return self.meters.metric_meters
+        
+    def set_training(self, training):
+        self.training = training
+        self.model.train(self.training)
+
+    def _iterate(self, i, inputs, start_time):
+        self.iteration += 1
+        data_time = time.time() - start_time
+        inputs, targets = self._parse_data(inputs)
+        loss, metric_bundle = self._forward(inputs, targets)
+        self._step(loss)
+        batch_time = time.time() - start_time
+        self.meters.update(
+            metric_bundle, batch_time, data_time, loss,
+            batch_size=inputs.size(0)
+        )
+        self.print_stats()
+        start_time = time.time()
+        
+    def _epoch_step(self):
+        if self.training:
+            self.epoch += 1
+
+    def print_stats(self):
+        print(f'{self._get_header()}\t{self.meters}')
+
+    def _get_header(self):
+        header = (
+            f'{self.tags[self.training]} epoch {self.epoch}:'
+            f' {self.iteration}/{len(self.loaders[self.training])}'
+        )
+        return header
+
+    def _parse_data(self, inputs):
+        image, label = inputs
+        image = image.to(self.device)
+        label = label.to(self.device)
+        return image, label
+
+    def _forward(self, inputs, targets):
+        outputs = self.model(inputs)
+        loss = self.loss(outputs, targets)
+        metric_bundle = self.metrics(outputs, targets)
+        return loss, metric_bundle
+
+    def _step(self, loss):
+        if self.training:
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            self.scheduler.step()
