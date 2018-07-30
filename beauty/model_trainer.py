@@ -43,14 +43,13 @@ class ModelTrainer:
             self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
-        checkpoint = utils.serialization.load_checkpoint(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path)
         self.model.load_state_dict(checkpoint['state_dict'])
         if not refresh:
             self.epoch = checkpoint['epoch']
             self.optimizer.load_state_dict(checkpoint['optimizer'])
-        print('Training resumed')
-        print('Start epoch: {:3d}'.format(self.epoch))
-        print('Best metrics: {}'.format(checkpoint['best_meters']))
+        print(f'Training resumed at epoch {self.epoch}')
+        print(f'Best metrics: {checkpoint["best_meters"]}')
 
     def log_training(self, metric_meters, log_dir):
         print('\n * Finished epoch {:3d}:\t'.format(self.epoch), end='')

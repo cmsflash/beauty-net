@@ -14,12 +14,3 @@ def save_checkpoint(state, are_best, log_dir='log/default'):
         if is_best:
             shutil.copy(checkpoint_file, osp.join(
                 log_dir, 'best_' + metric_name + '.pth.tar'))
-
-
-def load_checkpoint(fpath):
-    if osp.isfile(fpath):
-        checkpoint = torch.load(fpath)
-        print("=> Loaded checkpoint '{}'".format(fpath))
-        return checkpoint
-    else:
-        raise ValueError("=> No checkpoint found at '{}'".format(fpath))
