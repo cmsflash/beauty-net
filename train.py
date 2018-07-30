@@ -13,7 +13,7 @@ if __name__ == '__main__':
     job_name = sys.argv[2]
 
     config = Namespace(
-        input=Namespace(
+        data=Namespace(
             train=Namespace(
                 dataset=datasets.Scut5500Dataset,
                 config=Namespace(

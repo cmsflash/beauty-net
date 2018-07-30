@@ -1,7 +1,6 @@
 import time
 
-from . import networks, metrics, lr_schedulers, data_loaders
-from .utils import tensor_utils, serialization, meters
+from . import networks, metrics, lr_schedulers, data_loaders, utils
 
 
 class ModelTrainer:
@@ -13,30 +12,30 @@ class ModelTrainer:
         self.epoch = -1
         self.iteration = -1
         self.training = True
-        self.device = tensor_utils.get_device()
+        self.device = utils.tensor_utils.get_device()
 
         self.loaders = {
             True: data_loaders.create_data_loader(
-                config.input.train, data_loaders.TRAIN_CONFIG
+                config.data.train, data_loaders.TRAIN_CONFIG
             ),
             False: data_loaders.create_data_loader(
-                config.input.val, data_loaders.VAL_CONFIG, pin_memory=False
+                config.data.val, data_loaders.VAL_CONFIG, pin_memory=False
             )
         }
         self.model = networks.create_model(config.model, self.device)
         self.loss = config.model.loss()
         self.metrics = metrics.create_metric_bundle(config.metrics)
-        self.meters = meters.ModelMeters(self.metrics)
+        self.meters = utils.meters.ModelMeters(self.metrics)
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
         )
-        self.scheduler = lr_schedulers.create_lr_scheduler(
-            config.lr, self.optimizer
+        self.scheduler = config.lr.lr_scheduler(
+            self.optimizer, **vars(config.lr.config)
         )
         self.best_meters = self.metrics.create_max_meters()
 
     def train(self):
-        start_epoch = self.epoch
+        start_epoch = self.epoch + 1
         for epoch in range(start_epoch, self.config.training.epochs):
             self.epoch = epoch
             self.run_epoch(training=True)
@@ -44,7 +43,7 @@ class ModelTrainer:
             self.log_training(metric_meters, self.config.log_dir)
 
     def resume(self, checkpoint_path, refresh=True):
-        checkpoint = serialization.load_checkpoint(checkpoint_path)
+        checkpoint = utils.serialization.load_checkpoint(checkpoint_path)
         self.model.load_state_dict(checkpoint['state_dict'])
         if not refresh:
             self.epoch = checkpoint['epoch']
@@ -71,7 +70,9 @@ class ModelTrainer:
             'optimizer': self.optimizer.state_dict(),
             'best_meters': self.best_meters
         }
-        serialization.save_checkpoint(checkpoint, are_best, log_dir=log_dir)
+        utils.serialization.save_checkpoint(
+            checkpoint, are_best, log_dir=log_dir
+        )
 
     def run_epoch(self, training=None):
         if training is not None:
@@ -104,8 +105,7 @@ class ModelTrainer:
         start_time = time.time()
         
     def _epoch_step(self):
-        if self.training:
-            self.epoch += 1
+        pass
 
     def print_stats(self):
         print(f'{self._get_header()}\t{self.meters}')
