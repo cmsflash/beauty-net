@@ -40,7 +40,7 @@ class ModelTrainer:
             self.epoch = epoch
             self.run_epoch(training=True)
             metric_meters = self.run_epoch(training=False)
-            self.log_training(metric_meters, self.config.log_dir)
+            self.log_training(metric_meters)
 
     def resume(self, checkpoint_path, refresh=True):
         checkpoint = torch.load(checkpoint_path)
@@ -51,17 +51,14 @@ class ModelTrainer:
         print(f'Training resumed at epoch {self.epoch}')
         print(f'Best metrics: {checkpoint["best_meters"]}')
 
-    def log_training(self, metric_meters, log_dir):
-        print('\n * Finished epoch {:3d}:\t'.format(self.epoch), end='')
-
+    def log_training(self, metric_meters):
+        print(f'\n * Finished epoch {self.epoch}:\t', end='')
         self.best_meters.update(metric_meters)
         are_best = {
             label: meter.latest
             for label, meter in self.best_meters.meters.items()
         }
-        print(self.best_meters)
-        print()
-        print()
+        print(f'{self.best_meters}\n\n')
 
         checkpoint = {
             'epoch': self.epoch + 1,
@@ -69,9 +66,7 @@ class ModelTrainer:
             'optimizer': self.optimizer.state_dict(),
             'best_meters': self.best_meters
         }
-        utils.serialization.save_checkpoint(
-            checkpoint, are_best, log_dir=log_dir
-        )
+        utils.serialization.save_checkpoint(checkpoint, self.config.log_dir)
 
     def run_epoch(self, training=None):
         if training is not None:
