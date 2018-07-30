@@ -55,7 +55,7 @@ if __name__ == '__main__':
             loss=nn.CrossEntropyLoss
         ),
         training=Namespace(
-            epochs=200
+            epochs=10
         ),
         optimizer=Namespace(
             optimizer=optim.Adam,
