@@ -68,8 +68,12 @@ if __name__ == '__main__':
             lr_scheduler=lr_schedulers.ConstantLr,
             config=Namespace()
         ),
-        log_dir=osp.join('logs', job_name),
-        metrics=[metrics.Accuracy]
+        log=Namespace(
+            dir=osp.join('logs', job_name),
+            interval=1,
+            metrics=[metrics.Accuracy]
+        )
+
     )
 
     model_trainer = ModelTrainer(job_name, config)

@@ -24,7 +24,7 @@ class ModelTrainer:
         }
         self.model = networks.create_model(config.model, self.device)
         self.loss = config.model.loss()
-        self.metrics = metrics.create_metric_bundle(config.metrics)
+        self.metrics = metrics.create_metric_bundle(config.log.metrics)
         self.meters = utils.meters.ModelMeters(self.metrics)
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), **vars(config.optimizer.config)
@@ -66,7 +66,7 @@ class ModelTrainer:
             'optimizer': self.optimizer.state_dict(),
             'best_meters': self.best_meters
         }
-        utils.serialization.save_checkpoint(checkpoint, self.config.log_dir)
+        utils.serialization.save_checkpoint(checkpoint, self.config.log)
 
     def run_epoch(self, training=None):
         if training is not None:
