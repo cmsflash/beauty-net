@@ -3,4 +3,5 @@ build/
 dist/
 logs/
 *.pyc
+__pycache__
 
