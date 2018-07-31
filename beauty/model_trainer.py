@@ -73,10 +73,10 @@ class ModelTrainer:
             self.set_training(training)
         self._epoch_step()
         self.meters.reset()
-        start_time = time.time()
         loader = self.loaders[self.training]
-        for i, inputs in enumerate(loader):
-            self._iterate(i, inputs, start_time)
+        start_time = time.time()
+        for inputs in loader:
+            self._iterate(inputs, start_time)
             start_time = time.time()
         return self.meters.metric_meters
         
@@ -84,7 +84,7 @@ class ModelTrainer:
         self.training = training
         self.model.train(self.training)
 
-    def _iterate(self, i, inputs, start_time):
+    def _iterate(self, inputs, start_time):
         self.iteration += 1
         data_time = time.time() - start_time
         inputs, targets = self._parse_data(inputs)
