@@ -86,14 +86,12 @@ class ModelTrainer:
 
     def _iterate(self, inputs, start_time):
         self.iteration += 1
-        data_time = time.time() - start_time
         inputs, targets = self._parse_data(inputs)
         loss, metric_bundle = self._forward(inputs, targets)
         self._step(loss)
         batch_time = time.time() - start_time
         self.meters.update(
-            metric_bundle, batch_time, data_time, loss,
-            batch_size=inputs.size(0)
+            metric_bundle, batch_time, loss, batch_size=inputs.size(0)
         )
         self.print_stats()
         start_time = time.time()
