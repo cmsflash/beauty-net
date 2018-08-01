@@ -1,12 +1,14 @@
 import time
 
-from . import networks, metrics, lr_schedulers, data_loaders, utils
+import torch
+
+from . import networks, metrics, data_loaders, utils
 
 
 class ModelTrainer:
-    tags = {True: 'Training', False: 'Validation'}
+    tags = {True: 'training', False: 'validation'}
 
-    def __init__(self, job_name, config, resume_from=None):
+    def __init__(self, job_name, config):
         self.job_name = job_name
         self.config = config
         self.epoch = -1
@@ -52,14 +54,8 @@ class ModelTrainer:
         print(f'Best metrics: {checkpoint["best_meters"]}')
 
     def log_training(self, metric_meters):
-        print(f'\n * Finished epoch {self.epoch}:\t', end='')
         self.best_meters.update(metric_meters)
-        are_best = {
-            label: meter.latest
-            for label, meter in self.best_meters.meters.items()
-        }
-        print(f'{self.best_meters}\n\n')
-
+        print(f'\n * Finished epoch {self.epoch}:\t{self.best_meters}\n\n')
         checkpoint = {
             'epoch': self.epoch + 1,
             'state_dict': self.model.state_dict(),
@@ -79,7 +75,7 @@ class ModelTrainer:
             self._iterate(inputs, start_time)
             start_time = time.time()
         return self.meters.metric_meters
-        
+
     def set_training(self, training):
         self.training = training
         self.model.train(self.training)
@@ -95,7 +91,7 @@ class ModelTrainer:
         )
         self.print_stats()
         start_time = time.time()
-        
+
     def _epoch_step(self):
         pass
 
@@ -104,8 +100,8 @@ class ModelTrainer:
 
     def _get_header(self):
         header = (
-            f'{self.tags[self.training]} epoch {self.epoch}:'
-            f' {self.iteration}/{len(self.loaders[self.training])}'
+            f'Epoch {self.epoch} {self.tags[self.training]}'
+            f' {self.iteration}/{len(self.loaders[self.training])}:'
         )
         return header
 
