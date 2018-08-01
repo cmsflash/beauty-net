@@ -9,7 +9,7 @@ VAL_CONFIG = Namespace(split_name='Validation', shuffle=False, drop_last=False)
 
 def create_data_loader(input_config, loader_config, pin_memory=True):
     dataset = input_config.dataset(input_config.config)
-    print('{} size: {}'.format(loader_config.split_name, len(dataset)))
+    print(f'{loader_config.split_name} set: {len(dataset)} examples')
     data_loader = DataLoader(
         dataset,
         input_config.batch_size,
