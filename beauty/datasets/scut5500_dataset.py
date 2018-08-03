@@ -6,7 +6,6 @@ import torch
 from torch.utils.data import Dataset
 
 from . import transforms
-from .utils import *
 
 
 class Scut5500Dataset(Dataset):
