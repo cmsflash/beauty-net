@@ -1,5 +1,4 @@
 import os.path as osp
-import numpy as np
 from PIL import Image
 
 import torch
@@ -17,7 +16,8 @@ class Scut5500Dataset(Dataset):
         )
         self.discrete = data_config.discrete
 
-    def _read_data_list(self, data_dir, data_list_path):
+    @classmethod
+    def _read_data_list(cls, data_dir, data_list_path):
         data_list = []
         with open(data_list_path) as data_list_file:
             for line in data_list_file:
