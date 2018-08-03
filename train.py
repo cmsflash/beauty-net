@@ -3,6 +3,7 @@ from argparse import Namespace
 import sys
 
 from torch import nn, optim
+from torchvision import transforms
 
 from beauty import ModelTrainer, networks, metrics, lr_schedulers, datasets
 from beauty.networks.beauty_net import BeautyNet
@@ -25,8 +26,17 @@ if __name__ == '__main__':
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
                         'train_test_files/1_label.txt'
                     ),
-                    input_size=(320, 320),
-                    transform_method='Data Augment'
+                    transforms=[
+                        Namespace(
+                            transform=transforms.Resize,
+                            config=Namespace(size=(320, 320))
+                        ),
+                        Namespace(
+                            transform=transforms.ToTensor,
+                            config=Namespace()
+                        )
+                    ],
+                    discrete=True
                 ),
                 batch_size=gpus
             ),
@@ -41,8 +51,17 @@ if __name__ == '__main__':
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
                         'train_test_files/1_label.txt'
                     ),
-                    input_size=(320, 320),
-                    transform_method='Resize'
+                    transforms=[
+                        Namespace(
+                            transform=transforms.Resize,
+                            config=Namespace(size=(320, 320))
+                        ),
+                        Namespace(
+                            transform=transforms.ToTensor,
+                            config=Namespace()
+                        )
+                    ],
+                    discrete=True
                 ),
                 batch_size=gpus
             )
