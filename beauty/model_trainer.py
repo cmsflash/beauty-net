@@ -93,7 +93,7 @@ class ModelTrainer:
         start_time = time.time()
 
     def _epoch_step(self):
-        pass
+        self.iteration = -1
 
     def print_stats(self):
         print(f'{self._get_header()}\t{self.meters}')
