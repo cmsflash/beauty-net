@@ -1,5 +1,4 @@
 from .accuracy import Accuracy
-from .metric_factory import MetricFactory
 from .metric_bundle import MetricBundle
 
 
