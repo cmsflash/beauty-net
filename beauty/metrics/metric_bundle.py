@@ -3,28 +3,28 @@ from torch import nn
 from ..utils import meters
 
 
-class MetricBundle:
+class MetricBundle(nn.Module):
     def __init__(self, metrics):
+        super().__init__()
         self.metrics = {metric.label: metric for metric in metrics}
 
-    def create_max_meters(self):
+    def forward(self, prediction, truth):
         metric_values = meters.MeterBundle([
-            meters.MaxMeter(label, 0)
+            meters.Meter(label, metric(prediction, truth))
             for label, metric in self.metrics.items()
         ])
+        return metric_values
+
+    def create_max_meters(self):
+        metric_values = self._create_meters(meters.MaxMeter)
         return metric_values
 
     def create_average_meters(self):
-        metric_values = meters.MeterBundle([
-            meters.AverageMeter(label, 0)
-            for label, metric in self.metrics.items()
-        ])
+        metric_values = self._create_meters(meters.AverageMeter)
         return metric_values
 
-    def __call__(self, input, target):
+    def _create_meters(self, meter_type):
         metric_values = meters.MeterBundle([
-            meters.Meter(label, metric(input, target))
-            for label, metric in self.metrics.items()
+            meter_type(label, 0) for label, metric in self.metrics.items()
         ])
         return metric_values
-
