@@ -6,7 +6,6 @@ from torch import nn, optim
 from torchvision import transforms
 
 from beauty import ModelTrainer, networks, metrics, lr_schedulers, datasets
-from beauty.networks.beauty_net import BeautyNet
 
 
 if __name__ == '__main__':
@@ -67,7 +66,7 @@ if __name__ == '__main__':
             )
         ),
         model=Namespace(
-            network=BeautyNet,
+            network=networks.BeautyNet,
             feature_extractor=networks.feature_extractors.MobileNetV2,
             classifier=networks.classifiers.SoftmaxClassifier,
             weight_decay=5e-4,
