@@ -1,6 +1,6 @@
 from torch import nn
 
-from .utils import *
+from . import utils
 
 
 class SoftmaxClassifier(nn.Module):
@@ -10,9 +10,9 @@ class SoftmaxClassifier(nn.Module):
         self.linear = nn.Linear(input_channels, output_channels)
         self.softmax = nn.Softmax(dim=1)
 
-        init_modules(self.modules())
+        utils.init_modules(self.modules())
 
-    def forward(self, input):
-        linear = self.linear(input)
+    def forward(self, input_):
+        linear = self.linear(input_)
         softmax = self.softmax(linear)
         return softmax
