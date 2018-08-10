@@ -1,50 +1,60 @@
-import torch.nn as nn
 import math
 
-
-def conv_bn(inp, oup, stride):
-    return nn.Sequential(
-        nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
-        nn.BatchNorm2d(oup),
-        nn.ReLU6(inplace=True)
-    )
-
-
-def conv_1x1_bn(inp, oup):
-    return nn.Sequential(
-        nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
-        nn.BatchNorm2d(oup),
-        nn.ReLU6(inplace=True)
-    )
+from torch import nn
 
 
 class InvertedResidual(nn.Module):
-    def __init__(self, inp, oup, stride, expand_ratio):
-        super(InvertedResidual, self).__init__()
+    def __init__(self, in_channels, out_channels, stride, expansion):
+        super().__init__()
         self.stride = stride
-        assert stride in [1, 2]
+        self.is_residual = self.stride == 1 and in_channels == out_channels
+        channels = in_channels * expansion
 
-        self.use_res_connect = self.stride == 1 and inp == oup
-
-        self.conv = nn.Sequential(
-            # pw
-            nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(inp * expand_ratio),
-            nn.ReLU6(inplace=True),
-            # dw
-            nn.Conv2d(
-                inp * expand_ratio, inp * expand_ratio, 3,
-                stride, 1, groups=inp * expand_ratio, bias=False
+        self.conv = sequential(
+            conv(
+                in_channels, channels, 1, activation=nn.ReLU6(inplace=True)
             ),
-            nn.BatchNorm2d(inp * expand_ratio),
-            nn.ReLU6(inplace=True),
-            # pw-linear
-            nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(oup),
+            conv(
+                channels, channels, 3, self.stride, groups=channels,
+                activation=nn.ReLU6(inplace=True)
+            ),
+            conv(channels, out_channels, 1, activation=None)
         )
 
     def forward(self, x):
-        if self.use_res_connect:
-            return x + self.conv(x)
+        conv = self.conv(x)
+        if self.is_residual:
+            output = conv + x
         else:
-            return self.conv(x)
+            output = conv
+        return output
+
+
+def get_perfect_padding(kernel_size, dilation=1):
+    padding = (kernel_size - 1) * dilation // 2
+    return padding
+
+
+def sequential(*modules):
+    '''
+    Returns an nn.Sequential object using modules with None's filtered
+    '''
+    modules = [module for module in modules if module is not None]
+    return nn.Sequential(*modules)
+
+
+def conv(
+        in_channels, out_channels, kernel_size=3,
+        stride=1, padding=None, dilation=1, groups=1,
+        norm=nn.BatchNorm2d, activation=nn.ReLU(inplace=True)
+    ):
+    padding = padding or get_perfect_padding(kernel_size, dilation)
+    layer = sequential(
+        nn.Conv2d(
+            in_channels, out_channels, kernel_size,
+            stride, padding, dilation, groups, bias=False
+        ),
+        norm(out_channels),
+        activation
+    )
+    return layer
