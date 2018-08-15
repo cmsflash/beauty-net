@@ -10,6 +10,7 @@ class BeautyNet(nn.Module):
         self.classifier = classifier
 
     def forward(self, input_):
-        feature_vector = self.feature_extractor(input_)
+        feature = self.feature_extractor(input_)
+        feature_vector = torch.squeeze(torch.squeeze(feature, dim=3), dim=2)
         classification = self.classifier(feature_vector)
         return classification

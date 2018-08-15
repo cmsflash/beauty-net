@@ -30,6 +30,17 @@ class InvertedResidual(nn.Module):
         return output
 
 
+def inverted_residuals(in_channels, out_channels, stride, expansion, blocks):
+    residual_list = [
+        InvertedResidual(in_channels, out_channels, stride, expansion)
+    ] + [
+        InvertedResidual(out_channels, out_channels, 1, expansion)
+        for _ in range(blocks - 1)
+    ]
+    residuals = sequential(*residual_list)
+    return residuals
+
+
 def get_perfect_padding(kernel_size, dilation=1):
     padding = (kernel_size - 1) * dilation // 2
     return padding
