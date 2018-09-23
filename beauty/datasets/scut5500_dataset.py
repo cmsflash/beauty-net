@@ -38,7 +38,7 @@ class Scut5500Dataset(Dataset):
             score = round(score) - 1
         score = torch.tensor(score)
 
-        return image, score
+        return index, image, score
 
     def _read_example(self, index):
         image_path, score = self.data_list[index]

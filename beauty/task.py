@@ -75,7 +75,7 @@ class Task:
 
     def _iterate(self, data, start_time):
         self.iteration += 1
-        input_, target = self._parse_data(data)
+        _, input_, target = self._parse_data(data)
         loss, metric_bundle = self._forward(input_, target)
         self._step(loss)
         iteration_time = time.time() - start_time
@@ -85,10 +85,10 @@ class Task:
         self._print_stats()
 
     def _parse_data(self, data):
-        input_, target = data
+        index, input_, target = data
         input_ = input_.to(self.device)
         target = target.to(self.device)
-        return input_, target
+        return index, input_, target
 
     def _forward(self, input_, target):
         output = self.model(input_)
