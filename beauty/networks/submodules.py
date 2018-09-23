@@ -17,7 +17,7 @@ def sequential(*modules):
 
 
 class InvertedResidual(nn.Module):
-    def __init__(self, in_channels, out_channels, stride, expansion):
+    def __init__(self, in_channels, out_channels, expansion, stride):
         super().__init__()
         self.stride = stride
         self.is_residual = self.stride == 1 and in_channels == out_channels
@@ -44,12 +44,12 @@ class InvertedResidual(nn.Module):
 
 
 def inverted_residuals(
-        in_channels, out_channels, stride=1, expansion=6, blocks=1
+        in_channels, out_channels, expansion=6, stride=1, blocks=1
     ):
     residual_list = [
-        InvertedResidual(in_channels, out_channels, stride, expansion)
+        InvertedResidual(in_channels, out_channels, expansion, stride)
     ] + [
-        InvertedResidual(out_channels, out_channels, 1, expansion)
+        InvertedResidual(out_channels, out_channels, expansion, 1)
         for _ in range(blocks - 1)
     ]
     residuals = sequential(*residual_list)
