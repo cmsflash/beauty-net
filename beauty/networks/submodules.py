@@ -3,6 +3,19 @@ import math
 from torch import nn
 
 
+def get_perfect_padding(kernel_size, dilation=1):
+    padding = (kernel_size - 1) * dilation // 2
+    return padding
+
+
+def sequential(*modules):
+    '''
+    Returns an nn.Sequential object using modules with None's filtered
+    '''
+    modules = [module for module in modules if module is not None]
+    return nn.Sequential(*modules)
+
+
 class InvertedResidual(nn.Module):
     def __init__(self, in_channels, out_channels, stride, expansion):
         super().__init__()
@@ -41,19 +54,6 @@ def inverted_residuals(
     ]
     residuals = sequential(*residual_list)
     return residuals
-
-
-def get_perfect_padding(kernel_size, dilation=1):
-    padding = (kernel_size - 1) * dilation // 2
-    return padding
-
-
-def sequential(*modules):
-    '''
-    Returns an nn.Sequential object using modules with None's filtered
-    '''
-    modules = [module for module in modules if module is not None]
-    return nn.Sequential(*modules)
 
 
 def conv(
