@@ -28,7 +28,7 @@ class InvertedResidual(nn.Module):
         self.is_residual = self.stride == 1 and in_channels == out_channels
         channels = in_channels * expansion
 
-        self.conv = sequential(
+        self.bottlebody = sequential(
             conv(in_channels, channels, 1, activation=default_activation()),
             conv(
                 channels, channels, 3, self.stride, groups=channels,
@@ -38,11 +38,11 @@ class InvertedResidual(nn.Module):
         )
 
     def forward(self, input_):
-        conv = self.conv(input_)
+        bottlebody = self.bottlebody(input_)
         if self.is_residual:
-            output = conv + input_
+            output = bottlebody + input_
         else:
-            output = conv
+            output = bottlebody
         return output
 
 
