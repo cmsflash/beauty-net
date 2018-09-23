@@ -44,9 +44,14 @@ class Task:
             metric_meters = self._run_epoch(training=False)
             self._log_training(metric_meters)
 
-    def resume(self, checkpoint_path, refresh=True):
+    def resume(self, checkpoint_path, refresh=True, partial=False):
         checkpoint = torch.load(checkpoint_path)
-        self.model.load_state_dict(checkpoint['model'])
+        if partial:
+            model_state_dict = self.model.state_dict()
+            model_state_dict.update(checkpoint['model'])
+        else:
+            model_state_dict = checkpoint['model']
+        self.model.load_state_dict(model_state_dict)
         if not refresh:
             self.epoch = checkpoint['epoch']
             self.optimizer.load_state_dict(checkpoint['optimizer'])
