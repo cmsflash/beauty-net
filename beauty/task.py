@@ -121,4 +121,4 @@ class Task:
             'optimizer': self.optimizer.state_dict(),
             'best_meters': self.best_meters
         }
-        utils.serialization.save_checkpoint(checkpoint, self.config.log)
+        utils.serialization.save(checkpoint, self.config.log)

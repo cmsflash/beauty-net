@@ -6,7 +6,7 @@ import torch
 from . import os_utils
 
 
-def save_checkpoint(checkpoint, log_config):
+def save(checkpoint, log_config):
     os_utils.make_dir_if_missing(log_config.dir)
     checkpoint_path = osp.join(log_config.dir, 'checkpoint.pth')
     torch.save(checkpoint, checkpoint_path)
