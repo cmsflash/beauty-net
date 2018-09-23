@@ -14,7 +14,7 @@ def create_data_loader(input_config, loader_config, pin_memory=True):
         dataset,
         input_config.batch_size,
         shuffle=loader_config.shuffle,
-        num_workers=1,
+        num_workers=8,
         pin_memory=pin_memory,
         drop_last=loader_config.drop_last
     )
