@@ -94,6 +94,7 @@ class Task:
 
     def _epoch_step(self):
         self.iteration = -1
+        self.scheduler.step()
 
     def print_stats(self):
         print(f'{self._get_header()}\t{self.meters}')
@@ -122,4 +123,3 @@ class Task:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            self.scheduler.step()
