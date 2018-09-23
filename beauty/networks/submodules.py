@@ -37,10 +37,10 @@ class InvertedResidual(nn.Module):
             conv(channels, out_channels, 1, activation=None)
         )
 
-    def forward(self, x):
-        conv = self.conv(x)
+    def forward(self, input_):
+        conv = self.conv(input_)
         if self.is_residual:
-            output = conv + x
+            output = conv + input_
         else:
             output = conv
         return output
