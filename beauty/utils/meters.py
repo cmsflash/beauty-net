@@ -10,10 +10,7 @@ class Meter:
     def reset(self):
         self.value = self.initial or 0.
         self.measure = self.initial or 0.
-        if self.initial is None:
-            self.count = 0
-        else:
-            self.count = 1
+        self.count = 0 if self.initial is None else 1
 
     def update(self, value, multiplicity=1):
         self.value = value
@@ -51,10 +48,7 @@ class MaxMeter(Meter):
             self.latest = False
 
     def __str__(self):
-        if self.latest:
-            marker = '*'
-        else:
-            marker = ''
+        marker = '*' if self.latest else ''
         string = f'{super().__str__()}{marker}'
         return string
 

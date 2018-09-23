@@ -37,10 +37,7 @@ class InvertedResidual(nn.Module):
 
     def forward(self, input_):
         bottlebody = self.bottlebody(input_)
-        if self.is_residual:
-            output = bottlebody + input_
-        else:
-            output = bottlebody
+        output = bottlebody + input_ if self.is_residual else bottlebody
         return output
 
 
