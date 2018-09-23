@@ -3,11 +3,11 @@ import shutil
 
 import torch
 
-from . import osutils
+from . import os_utils
 
 
 def save_checkpoint(checkpoint, log_config):
-    osutils.mkdir_if_missing(log_config.dir)
+    os_utils.make_dir_if_missing(log_config.dir)
     checkpoint_path = osp.join(log_config.dir, 'checkpoint.pth.tar')
     torch.save(checkpoint, checkpoint_path)
     are_best = {
