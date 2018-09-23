@@ -5,11 +5,11 @@ import torch
 from . import networks, metrics, data_loaders, utils
 
 
-class ModelTrainer:
+class Task:
     tags = {True: 'training', False: 'validation'}
 
-    def __init__(self, job_name, config):
-        self.job_name = job_name
+    def __init__(self, name, config):
+        self.name = name
         self.config = config
         self.epoch = -1
         self.iteration = -1

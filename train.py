@@ -5,12 +5,12 @@ import sys
 from torch import nn, optim
 from torchvision import transforms
 
-from beauty import ModelTrainer, networks, metrics, lr_schedulers, datasets
+from beauty import Task, networks, metrics, lr_schedulers, datasets
 
 
 if __name__ == '__main__':
     gpus = int(sys.argv[1])
-    job_name = sys.argv[2]
+    task_name = sys.argv[2]
 
     config = Namespace(
         data=Namespace(
@@ -88,12 +88,12 @@ if __name__ == '__main__':
             config=Namespace()
         ),
         log=Namespace(
-            dir=osp.join('logs', job_name),
+            dir=osp.join('logs', task_name),
             interval=1,
             metrics=[metrics.Accuracy]
         )
 
     )
 
-    model_trainer = ModelTrainer(job_name, config)
-    model_trainer.train()
+    task = Task(task_name, config)
+    task.train()

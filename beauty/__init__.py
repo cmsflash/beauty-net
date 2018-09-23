@@ -1,1 +1,1 @@
-from .model_trainer import ModelTrainer
+from .task import Task
