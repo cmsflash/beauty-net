@@ -1,5 +1,3 @@
-import math
-
 from torch import nn
 
 from . import submodules, weight_init
@@ -16,13 +14,13 @@ class MobileNetV2(_FeatureExtractor):
         super().__init__(feature_channels)
 
         self.initial = submodules.conv(3, 32, stride=2)
-        self.block1 = submodules.inverted_residuals(32, 16, 1, 1, 1)
-        self.block2 = submodules.inverted_residuals(16, 24, 2, 6, 2)
-        self.block3 = submodules.inverted_residuals(24, 32, 2, 6, 3)
-        self.block4a = submodules.inverted_residuals(32, 64, 2, 6, 4)
-        self.block4b = submodules.inverted_residuals(64, 96, 1, 6, 3)
-        self.block5a = submodules.inverted_residuals(96, 160, 1, 6, 3)
-        self.block5b = submodules.inverted_residuals(160, 320, 1, 6, 1)
+        self.block1 = submodules.inverted_residuals(32, 16, expansion=1)
+        self.block2 = submodules.inverted_residuals(16, 24, stride=2, blocks=2)
+        self.block3 = submodules.inverted_residuals(24, 32, stride=2, blocks=3)
+        self.block4a = submodules.inverted_residuals(32, 64, stride=2, blocks=4)
+        self.block4b = submodules.inverted_residuals(64, 96, blocks=3)
+        self.block5a = submodules.inverted_residuals(96, 160, blocks=3)
+        self.block5b = submodules.inverted_residuals(160, 320)
         self.final = submodules.conv(320, self.feature_channels, 1)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
 

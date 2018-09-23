@@ -30,7 +30,9 @@ class InvertedResidual(nn.Module):
         return output
 
 
-def inverted_residuals(in_channels, out_channels, stride, expansion, blocks):
+def inverted_residuals(
+        in_channels, out_channels, stride=1, expansion=6, blocks=1
+    ):
     residual_list = [
         InvertedResidual(in_channels, out_channels, stride, expansion)
     ] + [
