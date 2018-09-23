@@ -1,6 +1,3 @@
-from numbers import Number
-
-
 class Meter:
     def __init__(self, label='Default', initial=None):
         self.label = label
