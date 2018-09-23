@@ -5,6 +5,9 @@ class Meter:
     def __init__(self, label='Default', initial=None):
         self.label = label
         self.initial = initial
+        self.value = None
+        self.measure = None
+        self.count = None
         self.reset()
 
     def reset(self):
@@ -15,27 +18,34 @@ class Meter:
         else:
             self.count = 1
 
-
-class AverageMeter(Meter):
     def update(self, value, n=1):
         self.value = value
-        self.measure = self.measure * self.count + value * n / (self.count + n)
         self.count += n
 
     def __str__(self):
-        string = '{} {:5.3} ({:5.3})'.format(
-            self.label, self.value, self.measure
-        )
+        string = f'{self.label}: {self.value:5.3} ({self.measure:5.3})'
         return string
 
 
+class AverageMeter(Meter):
+    def update(self, value, n=1):
+        super().update(value, n)
+        self.measure = (
+            (self.measure * (self.count - n) + value * n) / self.count
+        )
+
+
 class MaxMeter(Meter):
+    def __init__(self, label='Default', initial=None):
+        self.latest = None
+        super().__init__(label, initial)
+
     def reset(self):
         super().reset()
         self.latest = False
 
     def update(self, value, n=1):
-        self.value = value
+        super().update(value, n)
         if value > self.measure:
             self.measure = value
             self.latest = True
@@ -47,9 +57,7 @@ class MaxMeter(Meter):
             marker = '*'
         else:
             marker = ''
-        string = '{}: {:5.3} [{:5.3}]{}'.format(
-            self.label, self.value, self.measure, marker
-        )
+        string = f'{super().__str__()}{marker}'
         return string
 
 
