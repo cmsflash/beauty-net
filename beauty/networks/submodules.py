@@ -16,6 +16,11 @@ def sequential(*modules):
     return nn.Sequential(*modules)
 
 
+def activation():
+    activation = nn.ReLU6(inplace=True)
+    return activation
+
+
 class InvertedResidual(nn.Module):
     def __init__(self, in_channels, out_channels, expansion, stride):
         super().__init__()
@@ -24,12 +29,10 @@ class InvertedResidual(nn.Module):
         channels = in_channels * expansion
 
         self.conv = sequential(
-            conv(
-                in_channels, channels, 1, activation=nn.ReLU6(inplace=True)
-            ),
+            conv(in_channels, channels, 1, activation=activation()),
             conv(
                 channels, channels, 3, self.stride, groups=channels,
-                activation=nn.ReLU6(inplace=True)
+                activation=activation()
             ),
             conv(channels, out_channels, 1, activation=None)
         )
@@ -59,7 +62,7 @@ def inverted_residuals(
 def conv(
         in_channels, out_channels, kernel_size=3,
         stride=1, padding=None, dilation=1, groups=1,
-        norm=nn.BatchNorm2d, activation=nn.ReLU(inplace=True)
+        norm=nn.BatchNorm2d, activation=activation()
     ):
     padding = padding or get_perfect_padding(kernel_size, dilation)
     layer = sequential(
