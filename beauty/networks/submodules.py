@@ -1,5 +1,3 @@
-import math
-
 from torch import nn
 
 
