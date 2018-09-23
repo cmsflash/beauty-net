@@ -8,7 +8,7 @@ class Meter:
         self.reset()
 
     def reset(self):
-        self.val = self.initial or 0.
+        self.value = self.initial or 0.
         self.measure = self.initial or 0.
         if self.initial is None:
             self.count = 0
@@ -17,13 +17,15 @@ class Meter:
 
 
 class AverageMeter(Meter):
-    def update(self, val, n=1):
-        self.val = val
-        self.measure = self.measure * self.count + val * n / (self.count + n)
+    def update(self, value, n=1):
+        self.value = value
+        self.measure = self.measure * self.count + value * n / (self.count + n)
         self.count += n
 
     def __str__(self):
-        string = '{} {:5.3} ({:5.3})'.format(self.label, self.val, self.measure)
+        string = '{} {:5.3} ({:5.3})'.format(
+            self.label, self.value, self.measure
+        )
         return string
 
 
@@ -32,10 +34,10 @@ class MaxMeter(Meter):
         super().reset()
         self.latest = False
 
-    def update(self, val, n=1):
-        self.val = val
-        if val > self.measure:
-            self.measure = val
+    def update(self, value, n=1):
+        self.value = value
+        if value > self.measure:
+            self.measure = value
             self.latest = True
         else:
             self.latest = False
@@ -46,7 +48,7 @@ class MaxMeter(Meter):
         else:
             marker = ''
         string = '{}: {:5.3} [{:5.3}]{}'.format(
-            self.label, self.val, self.measure, marker
+            self.label, self.value, self.measure, marker
         )
         return string
 
@@ -69,7 +71,7 @@ class MeterBundle:
         assert self.meters.keys().isdisjoint(other_bundle.meters.keys())
         bundle = MeterBundle(self.meter.values() + other_bundle.meters.values())
         return bundle
-        
+
     def __str__(self):
         string = '\t'.join([str(meter) for meter in self.meters.values()])
         return string
@@ -85,7 +87,7 @@ class ModelMeters:
         self.batch_time_meter.reset()
         self.loss_meter.reset()
         self.metric_meters.reset()
-    
+
     def update(self, metric_bundle, batch_time=None, loss=None, batch_size=1):
         self.batch_time_meter.update(batch_time)
         self.loss_meter.update(loss.item(), batch_size)
@@ -96,4 +98,3 @@ class ModelMeters:
             f'{self.batch_time_meter}\t{self.loss_meter}\t{self.metric_meters}'
         )
         return string
-        
