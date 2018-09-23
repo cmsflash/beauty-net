@@ -87,22 +87,20 @@ class MeterBundle:
 
 class ModelMeters:
     def __init__(self, metrics):
-        self.batch_time_meter = AverageMeter('Time')
+        self.time_meter = AverageMeter('Time')
         self.loss_meter = AverageMeter('Loss')
         self.metric_meters = metrics.create_average_meters()
 
     def reset(self):
-        self.batch_time_meter.reset()
+        self.time_meter.reset()
         self.loss_meter.reset()
         self.metric_meters.reset()
 
-    def update(self, metric_bundle, batch_time=None, loss=None, batch_size=1):
-        self.batch_time_meter.update(batch_time)
+    def update(self, time, loss, metric_bundle, batch_size=1):
+        self.time_meter.update(time)
         self.loss_meter.update(loss.item(), batch_size)
         self.metric_meters.update(metric_bundle)
 
     def __str__(self):
-        string = (
-            f'{self.batch_time_meter}\t{self.loss_meter}\t{self.metric_meters}'
-        )
+        string = f'{self.time_meter}\t{self.loss_meter}\t{self.metric_meters}'
         return string

@@ -85,9 +85,9 @@ class ModelTrainer:
         inputs, targets = self._parse_data(inputs)
         loss, metric_bundle = self._forward(inputs, targets)
         self._step(loss)
-        batch_time = time.time() - start_time
+        iteration_time = time.time() - start_time
         self.meters.update(
-            metric_bundle, batch_time, loss, batch_size=inputs.size(0)
+            iteration_time, loss, metric_bundle, batch_size=inputs.size(0)
         )
         self.print_stats()
         start_time = time.time()
