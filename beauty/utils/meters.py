@@ -18,9 +18,9 @@ class Meter:
         else:
             self.count = 1
 
-    def update(self, value, n=1):
+    def update(self, value, multiplicity=1):
         self.value = value
-        self.count += n
+        self.count += multiplicity
 
     def __str__(self):
         string = f'{self.label}: {self.value:5.3} ({self.measure:5.3})'
@@ -28,10 +28,11 @@ class Meter:
 
 
 class AverageMeter(Meter):
-    def update(self, value, n=1):
-        super().update(value, n)
+    def update(self, value, multiplicity=1):
+        super().update(value, multiplicity)
         self.measure = (
-            (self.measure * (self.count - n) + value * n) / self.count
+            (self.measure * (self.count - multiplicity) + value * multiplicity)
+            / self.count
         )
 
 
@@ -44,8 +45,8 @@ class MaxMeter(Meter):
         super().reset()
         self.latest = False
 
-    def update(self, value, n=1):
-        super().update(value, n)
+    def update(self, value, multiplicity=1):
+        super().update(value, multiplicity)
         if value > self.measure:
             self.measure = value
             self.latest = True
