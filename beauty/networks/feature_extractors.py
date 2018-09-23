@@ -19,7 +19,9 @@ class MobileNetV2(_FeatureExtractor):
         self.block3 = submodules.inverted_residuals(24, 32, stride=2, blocks=3)
         self.block4a = submodules.inverted_residuals(32, 64, stride=2, blocks=4)
         self.block4b = submodules.inverted_residuals(64, 96, blocks=3)
-        self.block5a = submodules.inverted_residuals(96, 160, blocks=3)
+        self.block5a = submodules.inverted_residuals(
+            96, 160, stride=2, blocks=3
+        )
         self.block5b = submodules.inverted_residuals(160, 320)
         self.final = submodules.conv(320, self.feature_channels, 1)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
