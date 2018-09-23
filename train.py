@@ -69,6 +69,7 @@ if __name__ == '__main__':
             network=networks.BeautyNet,
             feature_extractor=networks.feature_extractors.MobileNetV2,
             classifier=networks.classifiers.SoftmaxClassifier,
+            class_count=5,
             weight_decay=5e-4,
             loss=nn.CrossEntropyLoss
         ),
