@@ -18,11 +18,11 @@ if __name__ == '__main__':
                 dataset=datasets.Scut5500Dataset,
                 config=Namespace(
                     data_dir=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
                         'Images/'
                     ),
                     data_list_path=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
                         'train_test_files/All_labels.txt'
                     ),
                     transforms=[
@@ -43,11 +43,11 @@ if __name__ == '__main__':
                 dataset=datasets.Scut5500Dataset,
                 config=Namespace(
                     data_dir=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
                         'Images/'
                     ),
                     data_list_path=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
+                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
                         'train_test_files/All_labels.txt'
                     ),
                     transforms=[
