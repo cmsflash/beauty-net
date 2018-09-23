@@ -23,7 +23,7 @@ if __name__ == '__main__':
                     ),
                     data_list_path=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                        'train_test_files/1_label.txt'
+                        'train_test_files/All_labels.txt'
                     ),
                     transforms=[
                         Namespace(
@@ -37,7 +37,7 @@ if __name__ == '__main__':
                     ],
                     discrete=True
                 ),
-                batch_size=gpus
+                batch_size=gpus * 32
             ),
             val=Namespace(
                 dataset=datasets.Scut5500Dataset,
@@ -48,7 +48,7 @@ if __name__ == '__main__':
                     ),
                     data_list_path=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut-fbp5500/'
-                        'train_test_files/1_label.txt'
+                        'train_test_files/All_labels.txt'
                     ),
                     transforms=[
                         Namespace(
@@ -62,7 +62,7 @@ if __name__ == '__main__':
                     ],
                     discrete=True
                 ),
-                batch_size=gpus
+                batch_size=gpus * 32
             )
         ),
         model=Namespace(
@@ -74,7 +74,7 @@ if __name__ == '__main__':
             loss=nn.CrossEntropyLoss
         ),
         training=Namespace(
-            epochs=10
+            epochs=1000
         ),
         optimizer=Namespace(
             optimizer=optim.Adam,
@@ -83,7 +83,7 @@ if __name__ == '__main__':
             )
         ),
         lr=Namespace(
-            lr=1e-5,
+            lr=1e-3,
             lr_scheduler=lr_schedulers.ConstantLr,
             config=Namespace()
         ),
