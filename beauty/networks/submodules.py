@@ -62,7 +62,7 @@ def inverted_residuals(
 def conv(
         in_channels, out_channels, kernel_size=3,
         stride=1, padding=None, dilation=1, groups=1,
-        norm=nn.BatchNorm2d, activation=activation()
+        normalization=nn.BatchNorm2d, activation=activation()
     ):
     padding = padding or get_perfect_padding(kernel_size, dilation)
     layer = sequential(
@@ -70,7 +70,7 @@ def conv(
             in_channels, out_channels, kernel_size,
             stride, padding, dilation, groups, bias=False
         ),
-        norm(out_channels),
+        normalization(out_channels),
         activation
     )
     return layer
