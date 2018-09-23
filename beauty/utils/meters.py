@@ -78,7 +78,9 @@ class MeterBundle:
 
     def __add__(self, other_bundle):
         assert self.meters.keys().isdisjoint(other_bundle.meters.keys())
-        bundle = MeterBundle(self.meter.values() + other_bundle.meters.values())
+        bundle = MeterBundle(
+            self.meters.values() + other_bundle.meters.values()
+        )
         return bundle
 
     def __str__(self):
