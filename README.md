@@ -7,5 +7,5 @@ To run it:
     python3 setup.py clean
     python3 setup.py install
 
-    ./run.py train
+    ./run.sh train
 ```
