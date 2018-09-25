@@ -29,7 +29,8 @@ class Task:
         self.metrics = metrics.create_metric_bundle(config.log.metrics)
         self.meters = utils.meters.ModelMeters(self.metrics)
         self.optimizer = config.optimizer.optimizer(
-            self.model.parameters(), **vars(config.optimizer.config)
+            self.model.parameters(), config.lr.lr,
+	    **vars(config.optimizer.config)
         )
         self.scheduler = config.lr.lr_scheduler(
             self.optimizer, **vars(config.lr.config)
