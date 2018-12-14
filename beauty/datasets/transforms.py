@@ -7,3 +7,11 @@ def create_transform(transforms):
         for transform in transforms
     ])
     return transform
+
+
+class ToColor:
+
+    def __call__(self, image):
+        color_image = image.convert('RGB')
+        return color_image
+
