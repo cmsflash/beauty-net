@@ -15,17 +15,19 @@ if __name__ == '__main__':
     config = Namespace(
         data=Namespace(
             train=Namespace(
-                dataset=datasets.Scut5500,
+                dataset=datasets.ImageNet,
                 config=Namespace(
                     data_dir=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
-                        'Images/'
+                        '/mnt/lustre/share/images/train/'
                     ),
                     data_list_path=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
-                        'train_test_files/All_labels.txt'
+                        '/mnt/lustre/share/images/meta/train.txt'
                     ),
                     transforms=[
+                        Namespace(
+                            transform=datasets.transforms.ToColor,
+                            config=Namespace()
+                        ),
                         Namespace(
                             transform=transforms.Resize,
                             config=Namespace(size=(320, 320))
@@ -39,17 +41,19 @@ if __name__ == '__main__':
                 batch_size=gpus * 32
             ),
             val=Namespace(
-                dataset=datasets.Scut5500,
+                dataset=datasets.ImageNet,
                 config=Namespace(
                     data_dir=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
-                        'Images/'
+                        '/mnt/lustre/share/images/val/'
                     ),
                     data_list_path=(
-                        '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
-                        'train_test_files/All_labels.txt'
+                        '/mnt/lustre/share/images/meta/val.txt'
                     ),
                     transforms=[
+                        Namespace(
+                            transform=datasets.transforms.ToColor,
+                            config=Namespace()
+                        ),
                         Namespace(
                             transform=transforms.Resize,
                             config=Namespace(size=(320, 320))
@@ -67,7 +71,7 @@ if __name__ == '__main__':
             network=networks.BeautyNet,
             feature_extractor=networks.feature_extractors.MobileNetV2,
             classifier=networks.classifiers.SoftmaxClassifier,
-            class_count=5,
+            class_count=1000,
             weight_decay=5e-4,
             loss=nn.CrossEntropyLoss
         ),
