@@ -14,6 +14,10 @@ def sequential(*modules):
     return nn.Sequential(*modules)
 
 
+def identity():
+    return sequential()
+
+
 def default_activation():
     activation = nn.ReLU6(inplace=True)
     return activation
