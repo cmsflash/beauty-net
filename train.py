@@ -69,7 +69,7 @@ if __name__ == '__main__':
         ),
         model=Namespace(
             network=networks.BeautyNet,
-            feature_extractor=networks.feature_extractors.MobileNetV2,
+            feature_extractor=networks.feature_extractors.ResNet50,
             classifier=networks.classifiers.SoftmaxClassifier,
             class_count=1000,
             weight_decay=5e-4,
