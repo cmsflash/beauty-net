@@ -15,7 +15,7 @@ if __name__ == '__main__':
     config = Namespace(
         data=Namespace(
             train=Namespace(
-                dataset=datasets.Scut5500Dataset,
+                dataset=datasets.Scut5500,
                 config=Namespace(
                     data_dir=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'
@@ -40,7 +40,7 @@ if __name__ == '__main__':
                 batch_size=gpus * 32
             ),
             val=Namespace(
-                dataset=datasets.Scut5500Dataset,
+                dataset=datasets.Scut5500,
                 config=Namespace(
                     data_dir=(
                         '/mnt/lustre/share/shenzhuoran/datasets/scut_fbp5500/'

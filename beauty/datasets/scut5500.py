@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from . import transforms
 
 
-class Scut5500Dataset(Dataset):
+class Scut5500(Dataset):
     def __init__(self, data_config):
         super().__init__()
         self.transform = transforms.create_transform(data_config.transforms)

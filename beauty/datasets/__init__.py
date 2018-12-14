@@ -1,1 +1,2 @@
-from .scut5500_dataset import Scut5500Dataset
+from .scut5500 import Scut5500
+
