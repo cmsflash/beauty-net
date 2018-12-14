@@ -34,8 +34,7 @@ if __name__ == '__main__':
                             transform=transforms.ToTensor,
                             config=Namespace()
                         )
-                    ],
-                    discrete=True
+                    ]
                 ),
                 batch_size=gpus * 32
             ),
@@ -59,8 +58,7 @@ if __name__ == '__main__':
                             transform=transforms.ToTensor,
                             config=Namespace()
                         )
-                    ],
-                    discrete=True
+                    ]
                 ),
                 batch_size=gpus * 32
             )
