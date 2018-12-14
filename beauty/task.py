@@ -30,7 +30,7 @@ class Task:
         self.meters = utils.meters.ModelMeters(self.metrics)
         self.optimizer = config.optimizer.optimizer(
             self.model.parameters(), config.lr.lr,
-	    **vars(config.optimizer.config)
+            **vars(config.optimizer.config)
         )
         self.scheduler = config.lr.lr_scheduler(
             self.optimizer, **vars(config.lr.config)
