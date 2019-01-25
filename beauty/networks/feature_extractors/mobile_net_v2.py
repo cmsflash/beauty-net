@@ -31,3 +31,4 @@ class MobileNetV2(_FeatureExtractor):
         block5b = self.block5b(block5a)
         final = self.final(block5b)
         return final
+
