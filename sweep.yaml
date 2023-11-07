@@ -14,6 +14,7 @@ rules:
 branch: 'main'
 
 # By default Sweep will read the logs and outputs from your existing Github Actions. To disable this, set this to false.
+  - "All new business logic should have corresponding unit tests."
 gha_enabled: True
 
 # This is the description of your project. It will be used by sweep when creating PRs. You can tell Sweep what's unique about your project, what frameworks you use, or anything else you want.
